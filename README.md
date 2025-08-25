@@ -5,6 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Google Play](https://img.shields.io/badge/Google_Play-Download-green.svg)](https://play.google.com/store/apps/details?id=dev.pranav.reef)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-yellow.svg)](https://paypal.me/pranavpurwar)
+[![RB Status](https://shields.rbtlog.dev/simple/dev.pranav.reef)](https://shields.rbtlog.dev/dev.pranav.reef)
 
 **Transform your phone from a distraction machine into a productivity powerhouse**
 
@@ -61,6 +62,7 @@ your digital life.
 Reef is available on the Google Play Store:
 
 [<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Play Store" height="60">](https://play.google.com/store/apps/details?id=dev.pranav.reef)
+[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" alt="Get it at IzzyOnDroid" height="60">](https://apt.izzysoft.de/packages/dev.pranav.reef)
 
 ## 💖 Support the Project
 
