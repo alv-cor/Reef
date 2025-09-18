@@ -10,6 +10,8 @@ import android.os.Process
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -21,7 +23,6 @@ import dev.pranav.reef.util.AppLimits
 import dev.pranav.reef.util.applyDefaults
 import dev.pranav.reef.util.applyWindowInsets
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -61,7 +62,7 @@ class AppUsageActivity : AppCompatActivity() {
 
     private fun loadUsageStats() {
         // Use coroutines to fetch data off the main thread
-        GlobalScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(Dispatchers.IO) {
             val usageStatsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
             val launcherApps = getSystemService(LAUNCHER_APPS_SERVICE) as LauncherApps
             val appUsageStats = AppLimits.getUsageStats(usageStatsManager)
@@ -117,6 +118,23 @@ class AppUsageAdapter(
 
     override fun onBindViewHolder(holder: AppUsageViewHolder, position: Int) {
         holder.bind(getItem(position), packageManager, maxUsage)
+
+
+        val context = holder.itemView.context
+
+        val background = when {
+            itemCount == 1 -> ContextCompat.getDrawable(context, R.drawable.list_item_single)
+
+            position == 0 -> ContextCompat.getDrawable(context, R.drawable.list_item_top)
+
+            position == itemCount - 1 -> ContextCompat.getDrawable(
+                context,
+                R.drawable.list_item_bottom
+            )
+
+            else -> ContextCompat.getDrawable(context, R.drawable.list_item_middle)
+        }
+        holder.itemView.background = background
     }
 }
 
