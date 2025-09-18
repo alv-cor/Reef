@@ -74,6 +74,11 @@ Download Reef today and start your journey toward a more focused and productive 
 If Reef has helped you, consider supporting its development. Your contribution helps me continue
 building more useful and innovative features.
 
+<br>
+<img src="upi.jpeg" alt="Donate with UPI" height="260" />
+
+<br>
+
 UPI ID: **pranavpurwar@fam**
 
 ---
