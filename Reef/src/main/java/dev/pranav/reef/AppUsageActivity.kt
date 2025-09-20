@@ -71,8 +71,13 @@ class AppUsageActivity : AppCompatActivity() {
                 .asSequence()
                 .filter { it.totalTimeInForeground > 5 * 1000 && it.packageName != packageName }
                 .mapNotNull { stats ->
-                    launcherApps.getApplicationInfo(stats.packageName, 0, Process.myUserHandle())
-                        ?.let { appInfo -> Stats(appInfo, stats) }
+                    try {
+                        launcherApps.getApplicationInfo(stats.packageName, 0, Process.myUserHandle())
+                            ?.let { appInfo -> Stats(appInfo, stats) }
+                    } catch (e: PackageManager.NameNotFoundException) {
+                        e.printStackTrace()
+                        null
+                    } 
                 }
                 .toList()
 
