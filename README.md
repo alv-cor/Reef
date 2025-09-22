@@ -67,6 +67,13 @@ Download Reef today and start your journey toward a more focused and productive 
 [<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Play Store" height="60">](https://play.google.com/store/apps/details?id=dev.pranav.reef)
 [<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" alt="Get it at IzzyOnDroid" height="60">](https://apt.izzysoft.de/packages/dev.pranav.reef)
 
+
+Help us translate the app into your language!
+
+<a href="https://hosted.weblate.org/engage/reef/">
+  <img src="https://hosted.weblate.org/widget/reef/open-graph.png" height="140" alt="Translation status" />
+</a>
+
 ---
 
 ## 💖 Support the Project
