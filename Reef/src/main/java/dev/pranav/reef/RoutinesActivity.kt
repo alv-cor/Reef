@@ -2,35 +2,74 @@ package dev.pranav.reef
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
-import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import com.google.android.material.transition.platform.MaterialSharedAxis
 import dev.pranav.reef.data.Routine
 import dev.pranav.reef.data.RoutineSchedule
-import dev.pranav.reef.databinding.ActivityRoutinesBinding
-import dev.pranav.reef.databinding.ItemRoutineBinding
+import dev.pranav.reef.ui.ReefTheme
 import dev.pranav.reef.util.NotificationHelper
 import dev.pranav.reef.util.RoutineLimits
 import dev.pranav.reef.util.RoutineManager
 import dev.pranav.reef.util.applyDefaults
-import dev.pranav.reef.util.applyWindowInsets
+import kotlinx.coroutines.launch
 import java.time.DayOfWeek
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
-class RoutinesActivity : AppCompatActivity() {
-    private lateinit var binding: ActivityRoutinesBinding
-    private val adapter by lazy { RoutinesAdapter { routine -> onRoutineClicked(routine) } }
-
+class RoutinesActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         applyDefaults()
 
@@ -38,239 +77,362 @@ class RoutinesActivity : AppCompatActivity() {
         window.returnTransition = MaterialSharedAxis(MaterialSharedAxis.Z, false)
 
         super.onCreate(savedInstanceState)
-        binding = ActivityRoutinesBinding.inflate(layoutInflater)
-        setContentView(binding.root)
 
-        applyWindowInsets(binding.rootLayout)
-
-        setupUI()
-        loadRoutines()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        loadRoutines()
-    }
-
-    private fun setupUI() {
-        binding.toolbar.setNavigationOnClickListener {
-            onBackPressedDispatcher.onBackPressed()
+        setContent {
+            ReefTheme {
+                RoutinesScreen(
+                    onBackPressed = { onBackPressedDispatcher.onBackPressed() },
+                    onCreateRoutine = {
+                        startActivity(Intent(this, CreateRoutineActivity::class.java))
+                    },
+                    onEditRoutine = { routine ->
+                        val intent = Intent(this, CreateRoutineActivity::class.java).apply {
+                            putExtra("routine_id", routine.id)
+                        }
+                        startActivity(intent)
+                    }
+                )
+            }
         }
-
-        binding.routinesRecyclerView.adapter = adapter
-
-        binding.fabAddRoutine.setOnClickListener {
-            startActivity(Intent(this, CreateRoutineActivity::class.java))
-        }
-    }
-
-    private fun loadRoutines() {
-        val routines = RoutineManager.getRoutines()
-
-        if (routines.isEmpty()) {
-            binding.emptyState.visibility = View.VISIBLE
-            binding.routinesRecyclerView.visibility = View.GONE
-        } else {
-            binding.emptyState.visibility = View.GONE
-            binding.routinesRecyclerView.visibility = View.VISIBLE
-            adapter.submitList(routines)
-        }
-    }
-
-    private fun onRoutineClicked(routine: Routine) {
-        if (routine.schedule.type == RoutineSchedule.ScheduleType.MANUAL) {
-            // For manual routines, show option to activate immediately
-            MaterialAlertDialogBuilder(this)
-                .setTitle("Activate Routine")
-                .setMessage("Do you want to activate '${routine.name}' now?")
-                .setPositiveButton("Activate") { _, _ ->
-                    activateRoutineNow(routine)
-                }
-                .setNeutralButton("Edit") { _, _ ->
-                    editRoutine(routine)
-                }
-                .setNegativeButton("Cancel", null)
-                .show()
-        } else {
-            editRoutine(routine)
-        }
-    }
-
-    private fun editRoutine(routine: Routine) {
-        val intent = Intent(this, CreateRoutineActivity::class.java).apply {
-            putExtra("routine_id", routine.id)
-        }
-        startActivity(intent)
-    }
-
-    private fun activateRoutineNow(routine: Routine) {
-        // Apply routine limits using the separate system
-        val limitsMap = routine.limits.associate { it.packageName to it.limitMinutes }
-        RoutineLimits.setRoutineLimits(limitsMap, routine.id)
-
-        // Show confirmation
-        val limitsText = when (routine.limits.size) {
-            0 -> "No app limits were applied"
-            1 -> "1 app limit has been applied"
-            else -> "${routine.limits.size} app limits have been applied"
-        }
-
-        Snackbar.make(
-            binding.root,
-            "Routine '${routine.name}' activated! $limitsText",
-            Snackbar.LENGTH_LONG
-        ).show()
-
-        // Show notification
-        NotificationHelper.showRoutineActivatedNotification(this, routine)
     }
 }
 
-class RoutinesAdapter(
-    private val onRoutineClick: (Routine) -> Unit
-) : ListAdapter<Routine, RoutineViewHolder>(RoutineDiffCallback()) {
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RoutinesScreen(
+    onBackPressed: () -> Unit,
+    onCreateRoutine: () -> Unit,
+    onEditRoutine: (Routine) -> Unit
+) {
+    val context = LocalContext.current
+    var routines by remember { mutableStateOf(RoutineManager.getRoutines()) }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    var showActivateDialog by remember { mutableStateOf<Routine?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RoutineViewHolder {
-        val binding = ItemRoutineBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return RoutineViewHolder(binding, onRoutineClick)
+    LaunchedEffect(Unit) {
+        routines = RoutineManager.getRoutines()
     }
 
-    override fun onBindViewHolder(holder: RoutineViewHolder, position: Int) {
-        holder.bind(getItem(position))
-
-        val context = holder.itemView.context
-
-        val background = when {
-            itemCount == 1 -> ContextCompat.getDrawable(context, R.drawable.list_item_single)
-
-            position == 0 -> ContextCompat.getDrawable(context, R.drawable.list_item_top)
-
-            position == itemCount - 1 -> ContextCompat.getDrawable(
-                context,
-                R.drawable.list_item_bottom
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            LargeTopAppBar(
+                title = { Text(stringResource(R.string.routines)) },
+                navigationIcon = {
+                    IconButton(onClick = onBackPressed) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                scrollBehavior = scrollBehavior
             )
-
-            else -> ContextCompat.getDrawable(context, R.drawable.list_item_middle)
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = onCreateRoutine,
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text(stringResource(R.string.create_routine)) }
+            )
         }
-        holder.itemView.background = background
-    }
-}
-
-class RoutineViewHolder(
-    private val binding: ItemRoutineBinding,
-    private val onRoutineClick: (Routine) -> Unit
-) : RecyclerView.ViewHolder(binding.root) {
-
-    private var currentRoutine: Routine? = null
-
-    init {
-        binding.root.setOnClickListener {
-            currentRoutine?.let { onRoutineClick(it) }
-        }
-
-        binding.routineToggle.setOnCheckedChangeListener { _, _ ->
-            currentRoutine?.let { routine ->
-                RoutineManager.toggleRoutine(routine.id, binding.root.context)
-            }
-        }
-    }
-
-    fun bind(routine: Routine) {
-        currentRoutine = routine
-
-        binding.routineName.text = routine.name
-        binding.routineSchedule.text = formatSchedule(routine.schedule)
-        binding.routineAppsCount.text = when (routine.limits.size) {
-            0 -> "No app limits set"
-            1 -> "1 app with limit"
-            else -> "${routine.limits.size} apps with limits"
-        }
-
-        // Temporarily remove the listener to prevent it from firing during data binding
-        binding.routineToggle.setOnCheckedChangeListener(null)
-        binding.routineToggle.isChecked = routine.isEnabled
-        // Restore the listener after setting the value
-        binding.routineToggle.setOnCheckedChangeListener { _, _ ->
-            currentRoutine?.let { routine ->
-                RoutineManager.toggleRoutine(routine.id, binding.root.context)
-            }
-        }
-
-        if (routine.isEnabled) {
-            binding.routineStatus.visibility = View.VISIBLE
-            binding.routineStatus.setText(R.string.active_status)
-        } else {
-            binding.routineStatus.visibility = View.GONE
-        }
-    }
-
-    private fun formatSchedule(schedule: RoutineSchedule): String {
-        Log.d("RoutineViewHolder", "Formatting schedule: $schedule")
-        return when (schedule.type) {
-            RoutineSchedule.ScheduleType.DAILY -> {
-                val timeRange = if (schedule.time != null && schedule.endTime != null) {
-                    " from ${formatTime(schedule.time!!)} to ${formatTime(schedule.endTime!!)}"
-                } else if (schedule.time != null) {
-                    " at ${formatTime(schedule.time!!)}"
-                } else ""
-                "Daily$timeRange"
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                InfoCard()
             }
 
-            RoutineSchedule.ScheduleType.WEEKLY -> {
-                val days = if (schedule.daysOfWeek.size == 7) {
-                    "Every day"
-                } else if (schedule.daysOfWeek.containsAll(
-                        listOf(
-                            DayOfWeek.MONDAY,
-                            DayOfWeek.TUESDAY,
-                            DayOfWeek.WEDNESDAY,
-                            DayOfWeek.THURSDAY,
-                            DayOfWeek.FRIDAY
-                        )
+            if (routines.isEmpty()) {
+                item {
+                    EmptyState()
+                }
+            } else {
+                items(routines, key = { it.id }) { routine ->
+                    RoutineItem(
+                        routine = routine,
+                        onClick = {
+                            if (routine.schedule.type == RoutineSchedule.ScheduleType.MANUAL) {
+                                showActivateDialog = routine
+                            } else {
+                                onEditRoutine(routine)
+                            }
+                        },
+                        onToggle = { enabled ->
+                            RoutineManager.toggleRoutine(routine.id, context)
+                            routines = RoutineManager.getRoutines()
+                        }
                     )
-                ) {
-                    "Weekdays"
-                } else if (schedule.daysOfWeek.containsAll(
-                        listOf(
-                            DayOfWeek.SATURDAY,
-                            DayOfWeek.SUNDAY
-                        )
-                    )
-                ) {
-                    "Weekends"
-                } else {
-                    schedule.daysOfWeek.sortedBy { it.value }
-                        .joinToString(", ") {
-                            it.getDisplayName(
-                                TextStyle.SHORT,
-                                Locale.getDefault()
+                }
+            }
+        }
+    }
+
+    showActivateDialog?.let { routine ->
+        AlertDialog(
+            onDismissRequest = { showActivateDialog = null },
+            title = { Text("Activate Routine") },
+            text = { Text("Do you want to activate '${routine.name}' now?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        activateRoutineNow(routine, context)
+                        showActivateDialog = null
+
+                        val limitsText = when (routine.limits.size) {
+                            0 -> "No app limits were applied"
+                            1 -> "1 app limit has been applied"
+                            else -> "${routine.limits.size} app limits have been applied"
+                        }
+
+                        kotlinx.coroutines.MainScope().launch {
+                            snackbarHostState.showSnackbar(
+                                "Routine '${routine.name}' activated! $limitsText",
+                                duration = SnackbarDuration.Long
                             )
                         }
+                    }
+                ) {
+                    Text("Activate")
                 }
-                val timeRange = if (schedule.time != null && schedule.endTime != null) {
-                    " from ${formatTime(schedule.time!!)} to ${formatTime(schedule.endTime!!)}"
-                } else if (schedule.time != null) {
-                    " at ${formatTime(schedule.time!!)}"
-                } else ""
-                "$days$timeRange"
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { showActivateDialog = null }) {
+                        Text("Cancel")
+                    }
+                    TextButton(
+                        onClick = {
+                            showActivateDialog = null
+                            onEditRoutine(routine)
+                        }
+                    ) {
+                        Text("Edit")
+                    }
+                }
             }
-
-            RoutineSchedule.ScheduleType.MANUAL -> "Manual activation"
-        }
-    }
-
-    private fun formatTime(time: java.time.LocalTime): String {
-        val formatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-        return time.format(formatter)
+        )
     }
 }
 
-class RoutineDiffCallback : DiffUtil.ItemCallback<Routine>() {
-    override fun areItemsTheSame(oldItem: Routine, newItem: Routine): Boolean {
-        return oldItem.id == newItem.id
+@Composable
+fun InfoCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.routine_card_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.routine_card_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
+}
 
-    override fun areContentsTheSame(oldItem: Routine, newItem: Routine): Boolean {
-        return oldItem == newItem
+@Composable
+fun EmptyState() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 32.dp, horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Surface(
+            modifier = Modifier.size(120.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.primaryContainer
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Schedule,
+                contentDescription = stringResource(R.string.no_routines),
+                modifier = Modifier.padding(32.dp),
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.no_routines_yet),
+            style = MaterialTheme.typography.titleLarge
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.create_routine_text),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
     }
+}
+
+@Composable
+fun RoutineItem(
+    routine: Routine,
+    onClick: () -> Unit,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Schedule,
+                    contentDescription = stringResource(R.string.routine_icon),
+                    modifier = Modifier.padding(12.dp),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = routine.name,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = formatSchedule(routine.schedule),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer
+                    ) {
+                        Text(
+                            text = when (routine.limits.size) {
+                                0 -> "No app limits set"
+                                1 -> "1 app with limit"
+                                else -> "${routine.limits.size} apps with limits"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+
+                    AnimatedVisibility(visible = routine.isEnabled) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                text = stringResource(R.string.active_status),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Switch(
+                checked = routine.isEnabled,
+                onCheckedChange = onToggle
+            )
+        }
+    }
+}
+
+private fun formatSchedule(schedule: RoutineSchedule): String {
+    return when (schedule.type) {
+        RoutineSchedule.ScheduleType.DAILY -> {
+            val timeRange = if (schedule.time != null && schedule.endTime != null) {
+                " from ${formatTime(schedule.time!!)} to ${formatTime(schedule.endTime!!)}"
+            } else if (schedule.time != null) {
+                " at ${formatTime(schedule.time!!)}"
+            } else ""
+            "Daily$timeRange"
+        }
+
+        RoutineSchedule.ScheduleType.WEEKLY -> {
+            val days = if (schedule.daysOfWeek.size == 7) {
+                "Every day"
+            } else if (schedule.daysOfWeek.containsAll(
+                    listOf(
+                        DayOfWeek.MONDAY,
+                        DayOfWeek.TUESDAY,
+                        DayOfWeek.WEDNESDAY,
+                        DayOfWeek.THURSDAY,
+                        DayOfWeek.FRIDAY
+                    )
+                )
+            ) {
+                "Weekdays"
+            } else if (schedule.daysOfWeek.containsAll(
+                    listOf(
+                        DayOfWeek.SATURDAY,
+                        DayOfWeek.SUNDAY
+                    )
+                )
+            ) {
+                "Weekends"
+            } else {
+                schedule.daysOfWeek.sortedBy { it.value }
+                    .joinToString(", ") {
+                        it.getDisplayName(
+                            TextStyle.SHORT,
+                            Locale.getDefault()
+                        )
+                    }
+            }
+            val timeRange = if (schedule.time != null && schedule.endTime != null) {
+                " from ${formatTime(schedule.time!!)} to ${formatTime(schedule.endTime!!)}"
+            } else if (schedule.time != null) {
+                " at ${formatTime(schedule.time!!)}"
+            } else ""
+            "$days$timeRange"
+        }
+
+        RoutineSchedule.ScheduleType.MANUAL -> "Manual activation"
+    }
+}
+
+private fun formatTime(time: LocalTime): String {
+    val formatter = DateTimeFormatter.ofPattern("HH:mm")
+    return time.format(formatter)
+}
+
+private fun activateRoutineNow(routine: Routine, context: android.content.Context) {
+    val limitsMap = routine.limits.associate { it.packageName to it.limitMinutes }
+    RoutineLimits.setRoutineLimits(limitsMap, routine.id)
+    NotificationHelper.showRoutineActivatedNotification(context, routine)
 }

@@ -1,7 +1,6 @@
 package dev.pranav.reef.accessibility
 
 import android.annotation.SuppressLint
-import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
@@ -26,108 +25,207 @@ class FocusModeService : Service() {
     companion object {
         private const val NOTIFICATION_ID = 1
         const val ACTION_TIMER_UPDATED = "dev.pranav.reef.TIMER_UPDATED"
-        const val EXTRA_TIME_LEFT = "left"
+        const val ACTION_PAUSE = "dev.pranav.reef.PAUSE_TIMER"
+        const val ACTION_RESUME = "dev.pranav.reef.RESUME_TIMER"
+        const val EXTRA_TIME_LEFT = "extra_time_left"
+
         var isRunning = false
+        var isPaused = false
     }
 
-    private lateinit var countDownTimer: CountDownTimer
     private val notificationManager by lazy { NotificationManagerCompat.from(this) }
+    private var countDownTimer: CountDownTimer? = null
+    private var currentMillisRemaining: Long = 0
+    private var isStrictMode: Boolean = false
 
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        val focusTimeMillis = prefs.getLong("focus_time", TimeUnit.MINUTES.toMillis(10))
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_PAUSE -> {
+                if (!isStrictMode) {
+                    pauseTimer()
+                }
+                return START_STICKY
+            }
 
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            createNotification(
-                title = getString(R.string.focus_mode),
-                text = getString(R.string.time_remaining, getFormattedTime(focusTimeMillis)),
-            ),
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
-        )
+            ACTION_RESUME -> {
+                if (!isStrictMode) {
+                    resumeTimer()
+                }
+                return START_STICKY
+            }
 
-        startCountdown(focusTimeMillis)
+            else -> {
+                val focusTimeMillis = prefs.getLong("focus_time", TimeUnit.MINUTES.toMillis(10))
+                isStrictMode = prefs.getBoolean("strict_mode", false)
+                currentMillisRemaining = focusTimeMillis
+                isRunning = true
+                isPaused = false
 
-        val notification = createNotification(
-            title = "Focus Mode", text = "You have completed the focus mode!"
-        )
+                ServiceCompat.startForeground(
+                    this,
+                    NOTIFICATION_ID,
+                    createNotification(
+                        title = getString(R.string.focus_mode),
+                        text = getString(
+                            R.string.time_remaining,
+                            getFormattedTime(focusTimeMillis)
+                        ),
+                        showPauseButton = !isStrictMode
+                    ),
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                    else 0
+                )
 
-        notificationManager.notify(NOTIFICATION_ID, notification)
+                startCountdown(focusTimeMillis)
+            }
+        }
+
         return START_STICKY
     }
 
     override fun onBind(intent: Intent): IBinder? = null
 
-    private fun startCountdown(durationMillis: Long) {
-        isRunning = true
-        countDownTimer = object : CountDownTimer(durationMillis, 1000) {
+    private fun startCountdown(timeMillis: Long) {
+        countDownTimer?.cancel()
+
+        countDownTimer = object : CountDownTimer(timeMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
-                updateNotificationAndBroadcast(millisUntilFinished)
+                if (!isPaused) {
+                    currentMillisRemaining = millisUntilFinished
+                    updateNotificationAndBroadcast(millisUntilFinished)
+                }
             }
 
             override fun onFinish() {
-                notificationManager.cancel(NOTIFICATION_ID)
                 onComplete()
-                isRunning = false
-                stopSelf()
             }
         }.start()
+    }
+
+    private fun pauseTimer() {
+        countDownTimer?.cancel()
+        isRunning = false
+        isPaused = true
+
+        prefs.edit {
+            putLong("focus_time_remaining", currentMillisRemaining)
+            putBoolean("focus_mode", false)
+        }
+
+        notificationManager.notify(
+            NOTIFICATION_ID,
+            createNotification(
+                title = getString(R.string.focus_mode),
+                text = "Paused - ${getFormattedTime(currentMillisRemaining)}",
+                showPauseButton = false
+            )
+        )
+
+        sendTimerUpdateBroadcast(getFormattedTime(currentMillisRemaining))
+    }
+
+    private fun resumeTimer() {
+        isRunning = true
+        isPaused = false
+
+        prefs.edit {
+            putBoolean("focus_mode", true)
+        }
+
+        notificationManager.notify(
+            NOTIFICATION_ID,
+            createNotification(
+                title = getString(R.string.focus_mode),
+                text = getString(R.string.time_remaining, getFormattedTime(currentMillisRemaining)),
+                showPauseButton = true
+            )
+        )
+
+        startCountdown(currentMillisRemaining)
     }
 
     private fun updateNotificationAndBroadcast(millisUntilFinished: Long) {
         val formattedTime = getFormattedTime(millisUntilFinished)
 
-        sendTimerUpdateBroadcast(formattedTime)
-
-        val notification = createNotification(
-            title = getString(R.string.focus_mode),
-            text = getString(R.string.time_remaining, formattedTime),
-            pendingIntent = createTimerActivityPendingIntent(formattedTime)
+        notificationManager.notify(
+            NOTIFICATION_ID,
+            createNotification(
+                title = getString(R.string.focus_mode),
+                text = getString(R.string.time_remaining, formattedTime),
+                showPauseButton = !isStrictMode && !isPaused
+            )
         )
 
-        notificationManager.notify(NOTIFICATION_ID, notification)
+        sendTimerUpdateBroadcast(formattedTime)
     }
 
     private fun onComplete() {
-        val formattedTime = getFormattedTime(0)
-
-        prefs.edit { putBoolean("focus_mode", false) }
-
-        sendTimerUpdateBroadcast(formattedTime)
-
-        val notification = createNotification(
-            title = getString(R.string.focus_mode),
-            text = getString(R.string.focus_mode_complete),
-        )
-        countDownTimer.cancel()
-        notificationManager.notify(NOTIFICATION_ID, notification)
         isRunning = false
-
+        isPaused = false
+        prefs.edit {
+            putBoolean("focus_mode", false)
+        }
+        sendTimerUpdateBroadcast("00:00")
         stopSelf()
     }
 
     private fun createNotification(
-        title: String, text: String, pendingIntent: PendingIntent? = null
-    ): Notification {
-        val builder =
-            NotificationCompat.Builder(this, CHANNEL_ID).setContentTitle(title).setContentText(text)
-                .setSmallIcon(R.drawable.round_hourglass_bottom_24).setSilent(true)
-                .setDefaults(NotificationCompat.DEFAULT_ALL)
-                .setPriority(NotificationCompat.PRIORITY_MAX)
-                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-
-        pendingIntent?.let { builder.setContentIntent(it) }
-
-        return builder.build()
-    }
-
-    private fun createTimerActivityPendingIntent(formattedTime: String): PendingIntent {
+        title: String,
+        text: String,
+        showPauseButton: Boolean
+    ): android.app.Notification {
         val intent = Intent(this, TimerActivity::class.java).apply {
-            putExtra(EXTRA_TIME_LEFT, formattedTime)
+            putExtra(EXTRA_TIME_LEFT, text)
         }
-        return PendingIntent.getActivity(
+
+        val pendingIntent = PendingIntent.getActivity(
             this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentIntent(pendingIntent)
+            .setDefaults(NotificationCompat.FOREGROUND_SERVICE_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_DEFAULT)
+            .setOngoing(true)
+
+        if (showPauseButton) {
+            val pauseIntent = Intent(this, FocusModeService::class.java).apply {
+                action = ACTION_PAUSE
+            }
+            val pausePendingIntent = PendingIntent.getService(
+                this,
+                1,
+                pauseIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            builder.addAction(
+                R.drawable.ic_launcher_foreground,
+                "Pause",
+                pausePendingIntent
+            )
+        } else {
+            val resumeIntent = Intent(this, FocusModeService::class.java).apply {
+                action = ACTION_RESUME
+            }
+            val resumePendingIntent = PendingIntent.getService(
+                this,
+                2,
+                resumeIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            builder.addAction(
+                R.drawable.ic_launcher_foreground,
+                "Resume",
+                resumePendingIntent
+            )
+        }
+
+        return builder.build()
     }
 
     private fun sendTimerUpdateBroadcast(formattedTime: String) {
@@ -135,15 +233,18 @@ class FocusModeService : Service() {
             setPackage(packageName)
             putExtra(EXTRA_TIME_LEFT, formattedTime)
         }
-
         sendBroadcast(intent)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        countDownTimer.cancel()
+        countDownTimer?.cancel()
         notificationManager.cancel(NOTIFICATION_ID)
-        prefs.edit { putBoolean("focus_mode", false) }
+        isRunning = false
+        isPaused = false
+        prefs.edit {
+            putBoolean("focus_mode", false)
+        }
     }
 }
 

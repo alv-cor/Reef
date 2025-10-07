@@ -48,6 +48,7 @@ class BlockerService : AccessibilityService() {
             }
 
             if (prefs.getBoolean("focus_mode", false)) {
+                Log.d("BlockerService", "Blocking $packageName ${event.className} in focus mode")
                 performGlobalAction(GLOBAL_ACTION_HOME)
                 showBlockingNotification(packageName)
                 return
@@ -59,7 +60,7 @@ class BlockerService : AccessibilityService() {
 
             Log.d(
                 "BlockerService",
-                "Package: $packageName, hasRoutineLimit: $hasRoutineLimit, hasRegularLimit: $hasRegularLimit"
+                "Package: $packageName, className: ${event.className} hasRoutineLimit: $hasRoutineLimit, hasRegularLimit: $hasRegularLimit"
             )
 
             if (hasRoutineLimit || hasRegularLimit) {

@@ -1,42 +1,95 @@
 package dev.pranav.reef
 
 import android.content.pm.ApplicationInfo
+import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
-import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.chip.Chip
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
-import com.google.android.material.timepicker.MaterialTimePicker
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.core.graphics.drawable.toBitmap
 import com.google.android.material.transition.platform.MaterialSharedAxis
 import dev.pranav.reef.data.Routine
 import dev.pranav.reef.data.RoutineSchedule
-import dev.pranav.reef.databinding.ActivityCreateRoutineBinding
-import dev.pranav.reef.databinding.ItemAppLimitBinding
+import dev.pranav.reef.ui.ReefTheme
 import dev.pranav.reef.util.RoutineManager
 import dev.pranav.reef.util.applyDefaults
-import dev.pranav.reef.util.applyWindowInsets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.DayOfWeek
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-class CreateRoutineActivity : AppCompatActivity() {
-    private lateinit var binding: ActivityCreateRoutineBinding
-    private var currentRoutine: Routine? = null
-    private var selectedTime = LocalTime.of(9, 0)
-    private var selectedEndTime = LocalTime.of(17, 0)
-    private val appLimitsAdapter = AppLimitsAdapter { appLimit -> removeAppLimit(appLimit) }
-    private val currentLimits = mutableListOf<Routine.AppLimit>()
-
+class CreateRoutineActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         applyDefaults()
 
@@ -44,355 +97,675 @@ class CreateRoutineActivity : AppCompatActivity() {
         window.returnTransition = MaterialSharedAxis(MaterialSharedAxis.Z, false)
 
         super.onCreate(savedInstanceState)
-        binding = ActivityCreateRoutineBinding.inflate(layoutInflater)
-        applyWindowInsets(binding.root)
-        setContentView(binding.root)
 
-        setupUI()
-        loadRoutineIfEditing()
-    }
-
-    private fun setupUI() {
-        binding.toolbar.setNavigationOnClickListener {
-            onBackPressedDispatcher.onBackPressed()
-        }
-
-        binding.toolbar.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                R.id.action_save -> {
-                    saveRoutine()
-                    true
-                }
-
-                else -> false
-            }
-        }
-
-        binding.timePickerButton.text = selectedTime.toString()
-        binding.endTimePickerButton.text = selectedEndTime.toString()
-
-        binding.appLimitsRecyclerView.adapter = appLimitsAdapter
-
-        binding.scheduleTypeToggle.check(R.id.weekly_button)
-        updateScheduleUI()
-
-        binding.scheduleTypeToggle.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (isChecked) {
-                updateScheduleUI()
-            }
-        }
-
-        binding.timePickerButton.setOnClickListener {
-            showTimePicker()
-        }
-
-        binding.endTimePickerButton.setOnClickListener {
-            showEndTimePicker()
-        }
-
-        binding.addAppLimitButton.setOnClickListener {
-            showAppSelectionDialog()
-        }
-
-        binding.saveRoutineButton.setOnClickListener {
-            saveRoutine()
-        }
-
-        binding.deleteRoutineButton.setOnClickListener {
-            deleteRoutine()
-        }
-
-        updateAppLimitsUI()
-    }
-
-    private fun loadRoutineIfEditing() {
         val routineId = intent.getStringExtra("routine_id")
-        if (routineId != null) {
+
+        setContent {
+            ReefTheme {
+                CreateRoutineScreen(
+                    routineId = routineId,
+                    onBackPressed = { onBackPressedDispatcher.onBackPressed() },
+                    onSaveComplete = { finishAfterTransition() }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun CreateRoutineScreen(
+    routineId: String?,
+    onBackPressed: () -> Unit,
+    onSaveComplete: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    var currentRoutine by remember { mutableStateOf<Routine?>(null) }
+    var routineName by remember { mutableStateOf("") }
+    var scheduleType by remember { mutableStateOf(RoutineSchedule.ScheduleType.WEEKLY) }
+    var selectedTime by remember { mutableStateOf(LocalTime.of(9, 0)) }
+    var selectedEndTime by remember { mutableStateOf(LocalTime.of(17, 0)) }
+    var selectedDays by remember { mutableStateOf(setOf<DayOfWeek>()) }
+    var appLimits by remember { mutableStateOf(listOf<Routine.AppLimit>()) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    var showEndTimePicker by remember { mutableStateOf(false) }
+    var showAppSelector by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(routineId) {
+        routineId?.let {
             currentRoutine = RoutineManager.getRoutines().find { it.id == routineId }
             currentRoutine?.let { routine ->
-                binding.toolbar.title = "Edit Routine"
-                binding.routineNameInput.setText(routine.name)
-                binding.deleteRoutineButton.visibility = View.VISIBLE
-
-                when (routine.schedule.type) {
-                    RoutineSchedule.ScheduleType.DAILY -> binding.scheduleTypeToggle.check(R.id.daily_button)
-                    RoutineSchedule.ScheduleType.WEEKLY -> binding.scheduleTypeToggle.check(R.id.weekly_button)
-                    RoutineSchedule.ScheduleType.MANUAL -> binding.scheduleTypeToggle.check(R.id.manual_button)
-                }
-
-                routine.schedule.time?.let { time ->
-                    selectedTime = time
-                    updateTimeButton()
-                }
-
-                routine.schedule.endTime?.let { endTime ->
-                    selectedEndTime = endTime
-                    updateEndTimeButton()
-                }
-
-                routine.schedule.daysOfWeek.forEach { day ->
-                    getDayChip(day)?.isChecked = true
-                }
-
-                currentLimits.clear()
-                currentLimits.addAll(routine.limits)
-                updateAppLimitsUI()
+                routineName = routine.name
+                scheduleType = routine.schedule.type
+                routine.schedule.time?.let { selectedTime = it }
+                routine.schedule.endTime?.let { selectedEndTime = it }
+                selectedDays = routine.schedule.daysOfWeek
+                appLimits = routine.limits
             }
         }
     }
 
-    private fun updateScheduleUI() {
-        val checkedId = binding.scheduleTypeToggle.checkedButtonId
-
-        when (checkedId) {
-            R.id.daily_button -> {
-                binding.timeSelectionLayout.visibility = View.VISIBLE
-                binding.daysSelectionLayout.visibility = View.GONE
-            }
-
-            R.id.weekly_button -> {
-                binding.timeSelectionLayout.visibility = View.VISIBLE
-                binding.daysSelectionLayout.visibility = View.VISIBLE
-            }
-
-            R.id.manual_button -> {
-                binding.timeSelectionLayout.visibility = View.GONE
-                binding.daysSelectionLayout.visibility = View.GONE
-            }
-        }
-    }
-
-    private fun showTimePicker() {
-        val picker = MaterialTimePicker.Builder()
-            .setTitleText("Select Time")
-            .setHour(selectedTime.hour)
-            .setMinute(selectedTime.minute)
-            .build()
-
-        picker.addOnPositiveButtonClickListener {
-            selectedTime = LocalTime.of(picker.hour, picker.minute)
-            updateTimeButton()
-        }
-
-        picker.show(supportFragmentManager, "time_picker")
-    }
-
-    private fun showEndTimePicker() {
-        val picker = MaterialTimePicker.Builder()
-            .setTitleText("Select End Time")
-            .setHour(selectedEndTime.hour)
-            .setMinute(selectedEndTime.minute)
-            .build()
-
-        picker.addOnPositiveButtonClickListener {
-            selectedEndTime = LocalTime.of(picker.hour, picker.minute)
-            updateEndTimeButton()
-        }
-
-        picker.show(supportFragmentManager, "end_time_picker")
-    }
-
-    private fun updateTimeButton() {
-        val formatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-        binding.timePickerButton.text = selectedTime.format(formatter)
-    }
-
-    private fun updateEndTimeButton() {
-        val formatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-        binding.endTimePickerButton.text = selectedEndTime.format(formatter)
-    }
-
-    private fun showAppSelectionDialog() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            val installedApps = packageManager.getInstalledApplications(0)
-                .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
-                .filter { it.packageName != packageName }
-                .sortedBy { packageManager.getApplicationLabel(it).toString() }
-
-            val appNames = installedApps.map { packageManager.getApplicationLabel(it).toString() }
-                .toTypedArray()
-            val packageNames = installedApps.map { it.packageName }.toTypedArray()
-
-            withContext(Dispatchers.Main) {
-                MaterialAlertDialogBuilder(this@CreateRoutineActivity)
-                    .setTitle("Select App")
-                    .setItems(appNames) { _, which ->
-                        showTimeLimitDialog(packageNames[which], appNames[which])
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            LargeTopAppBar(
+                title = {
+                    Text(
+                        if (currentRoutine != null) "Edit Routine"
+                        else stringResource(R.string.create_routine)
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackPressed) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                    .show()
-            }
+                },
+                scrollBehavior = scrollBehavior
+            )
         }
-    }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedTextField(
+                value = routineName,
+                onValueChange = { routineName = it },
+                label = { Text(stringResource(R.string.routine_name)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp)
+            )
 
-    private fun showTimeLimitDialog(packageName: String, appName: String) {
-        val timeOptions = arrayOf("15 minutes", "30 minutes", "1 hour", "2 hours", "3 hours")
-        val timeValues = arrayOf(15, 30, 60, 120, 180)
+            Text(
+                text = stringResource(R.string.schedule),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
 
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Set limit for $appName")
-            .setItems(timeOptions) { _, which ->
-                val limit = Routine.AppLimit(packageName, timeValues[which])
-                currentLimits.removeAll { it.packageName == packageName }
-                currentLimits.add(limit)
-                updateAppLimitsUI()
-            }
-            .show()
-    }
-
-    private fun removeAppLimit(appLimit: Routine.AppLimit) {
-        currentLimits.removeAll { it.packageName == appLimit.packageName }
-        updateAppLimitsUI()
-    }
-
-    private fun updateAppLimitsUI() {
-        if (currentLimits.isEmpty()) {
-            binding.noLimitsText.visibility = View.VISIBLE
-            binding.appLimitsRecyclerView.visibility = View.GONE
-        } else {
-            binding.noLimitsText.visibility = View.GONE
-            binding.appLimitsRecyclerView.visibility = View.VISIBLE
-            appLimitsAdapter.submitList(currentLimits.toList())
-        }
-    }
-
-    private fun getDayChip(day: DayOfWeek): Chip? {
-        return when (day) {
-            DayOfWeek.MONDAY -> binding.chipMonday
-            DayOfWeek.TUESDAY -> binding.chipTuesday
-            DayOfWeek.WEDNESDAY -> binding.chipWednesday
-            DayOfWeek.THURSDAY -> binding.chipThursday
-            DayOfWeek.FRIDAY -> binding.chipFriday
-            DayOfWeek.SATURDAY -> binding.chipSaturday
-            DayOfWeek.SUNDAY -> binding.chipSunday
-        }
-    }
-
-    private fun getSelectedDays(): Set<DayOfWeek> {
-        val selectedDays = mutableSetOf<DayOfWeek>()
-        if (binding.chipMonday.isChecked) selectedDays.add(DayOfWeek.MONDAY)
-        if (binding.chipTuesday.isChecked) selectedDays.add(DayOfWeek.TUESDAY)
-        if (binding.chipWednesday.isChecked) selectedDays.add(DayOfWeek.WEDNESDAY)
-        if (binding.chipThursday.isChecked) selectedDays.add(DayOfWeek.THURSDAY)
-        if (binding.chipFriday.isChecked) selectedDays.add(DayOfWeek.FRIDAY)
-        if (binding.chipSaturday.isChecked) selectedDays.add(DayOfWeek.SATURDAY)
-        if (binding.chipSunday.isChecked) selectedDays.add(DayOfWeek.SUNDAY)
-        return selectedDays
-    }
-
-    private fun saveRoutine() {
-        val name = binding.routineNameInput.text.toString().trim()
-        if (name.isEmpty()) {
-            Snackbar.make(binding.root, "Please enter a routine name", Snackbar.LENGTH_SHORT).show()
-            return
-        }
-
-        val scheduleType = when (binding.scheduleTypeToggle.checkedButtonId) {
-            R.id.daily_button -> RoutineSchedule.ScheduleType.DAILY
-            R.id.weekly_button -> RoutineSchedule.ScheduleType.WEEKLY
-            else -> RoutineSchedule.ScheduleType.MANUAL
-        }
-
-        val schedule = RoutineSchedule(
-            type = scheduleType,
-            timeHour = if (scheduleType != RoutineSchedule.ScheduleType.MANUAL) selectedTime.hour else null,
-            timeMinute = if (scheduleType != RoutineSchedule.ScheduleType.MANUAL) selectedTime.minute else null,
-            endTimeHour = if (scheduleType != RoutineSchedule.ScheduleType.MANUAL) selectedEndTime.hour else null,
-            endTimeMinute = if (scheduleType != RoutineSchedule.ScheduleType.MANUAL) selectedEndTime.minute else null,
-            daysOfWeek = if (scheduleType == RoutineSchedule.ScheduleType.WEEKLY) getSelectedDays() else emptySet()
-        )
-
-        if (scheduleType == RoutineSchedule.ScheduleType.WEEKLY && schedule.daysOfWeek.isEmpty()) {
-            Snackbar.make(binding.root, "Please select at least one day", Snackbar.LENGTH_SHORT)
-                .show()
-            return
-        }
-
-        val routine = Routine(
-            id = currentRoutine?.id ?: UUID.randomUUID().toString(),
-            name = name,
-            isEnabled = currentRoutine?.isEnabled ?: true,
-            schedule = schedule,
-            limits = currentLimits.toList()
-        )
-
-        if (currentRoutine == null) {
-            RoutineManager.addRoutine(routine, this)
-        } else {
-            RoutineManager.updateRoutine(routine, this)
-        }
-
-        finishAfterTransition()
-    }
-
-    private fun deleteRoutine() {
-        currentRoutine?.let { routine ->
-            MaterialAlertDialogBuilder(this)
-                .setTitle("Delete Routine")
-                .setMessage("Are you sure you want to delete '${routine.name}'? This action cannot be undone.")
-                .setPositiveButton("Delete") { _, _ ->
-                    RoutineManager.deleteRoutine(routine.id, this@CreateRoutineActivity)
-                    finishAfterTransition()
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                ToggleButton(
+                    checked = scheduleType == RoutineSchedule.ScheduleType.MANUAL,
+                    onCheckedChange = { scheduleType = RoutineSchedule.ScheduleType.MANUAL },
+                    shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.manual))
                 }
-                .setNegativeButton("Cancel", null)
-                .show()
+
+                ToggleButton(
+                    checked = scheduleType == RoutineSchedule.ScheduleType.DAILY,
+                    onCheckedChange = { scheduleType = RoutineSchedule.ScheduleType.DAILY },
+                    shapes = ButtonGroupDefaults.connectedMiddleButtonShapes(),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.daily))
+                }
+
+                ToggleButton(
+                    checked = scheduleType == RoutineSchedule.ScheduleType.WEEKLY,
+                    onCheckedChange = { scheduleType = RoutineSchedule.ScheduleType.WEEKLY },
+                    shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.weekly))
+                }
+            }
+
+            AnimatedVisibility(visible = scheduleType != RoutineSchedule.ScheduleType.MANUAL) {
+                OutlinedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                stringResource(R.string.start_time),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            FilledTonalButton(
+                                onClick = { showTimePicker = true },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.AccessTime,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(formatTime(selectedTime))
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                stringResource(R.string.end_time),
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            FilledTonalButton(
+                                onClick = { showEndTimePicker = true },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.AccessTime,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(formatTime(selectedEndTime))
+                            }
+                        }
+                    }
+                }
+            }
+
+            AnimatedVisibility(visible = scheduleType == RoutineSchedule.ScheduleType.WEEKLY) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = stringResource(R.string.select_days),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            DayOfWeek.MONDAY to R.string.monday,
+                            DayOfWeek.TUESDAY to R.string.tuesday,
+                            DayOfWeek.WEDNESDAY to R.string.wednesday,
+                            DayOfWeek.THURSDAY to R.string.thursday,
+                            DayOfWeek.FRIDAY to R.string.friday,
+                            DayOfWeek.SATURDAY to R.string.saturday,
+                            DayOfWeek.SUNDAY to R.string.sunday
+                        ).forEach { (day, stringRes) ->
+                            FilterChip(
+                                selected = selectedDays.contains(day),
+                                onClick = {
+                                    selectedDays = if (selectedDays.contains(day))
+                                        selectedDays - day
+                                    else selectedDays + day
+                                },
+                                label = { Text(stringResource(stringRes)) },
+                                leadingIcon = if (selectedDays.contains(day)) {
+                                    {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                } else null,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.app_limits),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                FilledTonalButton(
+                    onClick = { showAppSelector = true },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.add_app))
+                }
+            }
+
+            if (appLimits.isEmpty()) {
+                OutlinedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.no_app_limits_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp)
+                    )
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    appLimits.forEach { limit ->
+                        AppLimitItem(
+                            appLimit = limit,
+                            onRemove = {
+                                appLimits = appLimits.filter { it.packageName != limit.packageName }
+                            },
+                            context = context
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    val result = saveRoutine(
+                        context = context,
+                        currentRoutine = currentRoutine,
+                        name = routineName,
+                        scheduleType = scheduleType,
+                        selectedTime = selectedTime,
+                        selectedEndTime = selectedEndTime,
+                        selectedDays = selectedDays,
+                        appLimits = appLimits,
+                        onError = { message ->
+                            scope.launch {
+                                snackbarHostState.showSnackbar(message)
+                            }
+                        }
+                    )
+                    if (result) onSaveComplete()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                contentPadding = PaddingValues(vertical = 16.dp)
+            ) {
+                Text(
+                    stringResource(R.string.save_routine),
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+
+            if (currentRoutine != null) {
+                OutlinedButton(
+                    onClick = { showDeleteDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        stringResource(R.string.delete_routine),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+        }
+    }
+
+    if (showTimePicker) {
+        TimePickerDialog(
+            initialTime = selectedTime,
+            onTimeSelected = { selectedTime = it },
+            onDismiss = { showTimePicker = false },
+            title = "Start Time"
+        )
+    }
+
+    if (showEndTimePicker) {
+        TimePickerDialog(
+            initialTime = selectedEndTime,
+            onTimeSelected = { selectedEndTime = it },
+            onDismiss = { showEndTimePicker = false },
+            title = "End Time"
+        )
+    }
+
+    if (showAppSelector) {
+        AppSelectorDialog(
+            onAppSelected = { packageName, appName, limitMinutes ->
+                appLimits = appLimits.filter { it.packageName != packageName } +
+                        Routine.AppLimit(packageName, limitMinutes)
+                showAppSelector = false
+            },
+            onDismiss = { showAppSelector = false }
+        )
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text(stringResource(R.string.delete_routine)) },
+            text = {
+                Text("Are you sure you want to delete '${currentRoutine?.name}'? This action cannot be undone.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        currentRoutine?.let {
+                            RoutineManager.deleteRoutine(it.id, context)
+                        }
+                        onSaveComplete()
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun AppLimitItem(
+    appLimit: Routine.AppLimit,
+    onRemove: () -> Unit,
+    context: android.content.Context
+) {
+    var appName by remember { mutableStateOf(appLimit.packageName) }
+    var appIcon by remember { mutableStateOf<Drawable?>(null) }
+
+    LaunchedEffect(appLimit.packageName) {
+        withContext(Dispatchers.IO) {
+            try {
+                val pm = context.packageManager
+                val appInfo = pm.getApplicationInfo(appLimit.packageName, 0)
+                appName = pm.getApplicationLabel(appInfo).toString()
+                appIcon = pm.getApplicationIcon(appInfo)
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            appIcon?.let { icon ->
+                Surface(
+                    modifier = Modifier.size(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    tonalElevation = 1.dp
+                ) {
+                    Image(
+                        bitmap = icon.toBitmap().asImageBitmap(),
+                        contentDescription = stringResource(R.string.app_icon)
+                    )
+                }
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = appName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = formatLimitTime(appLimit.limitMinutes),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            IconButton(
+                onClick = onRemove,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Remove app limit",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
 
-class AppLimitsAdapter(
-    private val onRemove: (Routine.AppLimit) -> Unit
-) : ListAdapter<Routine.AppLimit, AppLimitViewHolder>(AppLimitDiffCallback()) {
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TimePickerDialog(
+    initialTime: LocalTime,
+    onTimeSelected: (LocalTime) -> Unit,
+    onDismiss: () -> Unit,
+    title: String
+) {
+    val timePickerState = rememberTimePickerState(
+        initialHour = initialTime.hour,
+        initialMinute = initialTime.minute,
+        is24Hour = true
+    )
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppLimitViewHolder {
-        val binding =
-            ItemAppLimitBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return AppLimitViewHolder(binding, onRemove)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onTimeSelected(LocalTime.of(timePickerState.hour, timePickerState.minute))
+                    onDismiss()
+                }
+            ) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        title = { Text(title) },
+        text = {
+            TimePicker(state = timePickerState)
+        }
+    )
+}
+
+@Composable
+fun AppSelectorDialog(
+    onAppSelected: (packageName: String, appName: String, limitMinutes: Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var apps by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    var selectedApp by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val installedApps = context.packageManager.getInstalledApplications(0)
+                .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
+                .filter { it.packageName != context.packageName }
+                .sortedBy { context.packageManager.getApplicationLabel(it).toString() }
+                .map {
+                    it.packageName to context.packageManager.getApplicationLabel(it).toString()
+                }
+            apps = installedApps
+            isLoading = false
+        }
     }
 
-    override fun onBindViewHolder(holder: AppLimitViewHolder, position: Int) {
-        holder.bind(getItem(position))
+    if (selectedApp != null) {
+        val (packageName, appName) = selectedApp!!
+        AlertDialog(
+            onDismissRequest = { selectedApp = null },
+            title = { Text("Set limit for $appName") },
+            text = {
+                Column {
+                    listOf(
+                        "15 minutes" to 15,
+                        "30 minutes" to 30,
+                        "1 hour" to 60,
+                        "2 hours" to 120,
+                        "3 hours" to 180
+                    ).forEach { (label, minutes) ->
+                        TextButton(
+                            onClick = {
+                                onAppSelected(packageName, appName, minutes)
+                                selectedApp = null
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { selectedApp = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    } else {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("Select App") },
+            text = {
+                if (isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(400.dp)
+                    ) {
+                        items(apps) { (packageName, appName) ->
+                            TextButton(
+                                onClick = { selectedApp = packageName to appName },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = appName,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
-class AppLimitViewHolder(
-    private val binding: ItemAppLimitBinding,
-    private val onRemove: (Routine.AppLimit) -> Unit
-) : RecyclerView.ViewHolder(binding.root) {
+private fun formatTime(time: LocalTime): String {
+    val formatter = DateTimeFormatter.ofPattern("HH:mm")
+    return time.format(formatter)
+}
 
-    fun bind(appLimit: Routine.AppLimit) {
-        val context = binding.root.context
-        val packageManager = context.packageManager
-
-        try {
-            val appInfo = packageManager.getApplicationInfo(appLimit.packageName, 0)
-            binding.appIcon.setImageDrawable(packageManager.getApplicationIcon(appInfo))
-            binding.appName.text = packageManager.getApplicationLabel(appInfo)
-        } catch (_: Exception) {
-            binding.appName.text = appLimit.packageName
-        }
-
-        binding.appLimit.text = formatTime(appLimit.limitMinutes)
-
-        binding.removeButton.setOnClickListener {
-            onRemove(appLimit)
-        }
-    }
-
-    private fun formatTime(minutes: Int): String {
-        return when {
-            minutes < 60 -> "${minutes}m"
-            minutes % 60 == 0 -> "${minutes / 60}h"
-            else -> "${minutes / 60}h ${minutes % 60}m"
-        }
+private fun formatLimitTime(minutes: Int): String {
+    return when {
+        minutes < 60 -> "${minutes}m"
+        minutes % 60 == 0 -> "${minutes / 60}h"
+        else -> "${minutes / 60}h ${minutes % 60}m"
     }
 }
 
-class AppLimitDiffCallback : DiffUtil.ItemCallback<Routine.AppLimit>() {
-    override fun areItemsTheSame(oldItem: Routine.AppLimit, newItem: Routine.AppLimit): Boolean {
-        return oldItem.packageName == newItem.packageName
+private fun saveRoutine(
+    context: android.content.Context,
+    currentRoutine: Routine?,
+    name: String,
+    scheduleType: RoutineSchedule.ScheduleType,
+    selectedTime: LocalTime,
+    selectedEndTime: LocalTime,
+    selectedDays: Set<DayOfWeek>,
+    appLimits: List<Routine.AppLimit>,
+    onError: (String) -> Unit
+): Boolean {
+    if (name.trim().isEmpty()) {
+        onError("Please enter a routine name")
+        return false
     }
 
-    override fun areContentsTheSame(oldItem: Routine.AppLimit, newItem: Routine.AppLimit): Boolean {
-        return oldItem == newItem
+    val schedule = RoutineSchedule(
+        type = scheduleType,
+        timeHour = if (scheduleType != RoutineSchedule.ScheduleType.MANUAL) selectedTime.hour else null,
+        timeMinute = if (scheduleType != RoutineSchedule.ScheduleType.MANUAL) selectedTime.minute else null,
+        endTimeHour = if (scheduleType != RoutineSchedule.ScheduleType.MANUAL) selectedEndTime.hour else null,
+        endTimeMinute = if (scheduleType != RoutineSchedule.ScheduleType.MANUAL) selectedEndTime.minute else null,
+        daysOfWeek = if (scheduleType == RoutineSchedule.ScheduleType.WEEKLY) selectedDays else emptySet()
+    )
+
+    if (scheduleType == RoutineSchedule.ScheduleType.WEEKLY && schedule.daysOfWeek.isEmpty()) {
+        onError("Please select at least one day")
+        return false
     }
+
+    val routine = Routine(
+        id = currentRoutine?.id ?: UUID.randomUUID().toString(),
+        name = name.trim(),
+        isEnabled = currentRoutine?.isEnabled ?: true,
+        schedule = schedule,
+        limits = appLimits
+    )
+
+    if (currentRoutine == null) {
+        RoutineManager.addRoutine(routine, context)
+    } else {
+        RoutineManager.updateRoutine(routine, context)
+    }
+
+    return true
 }

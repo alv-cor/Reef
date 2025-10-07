@@ -8,14 +8,21 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.Fragment
 import com.github.appintro.AppIntro2
 import com.github.appintro.AppIntroPageTransformerType
@@ -39,12 +46,29 @@ class PurelyIntro : AppIntro2() {
         isIndicatorEnabled = true
         isWizardMode = true
         isSystemBackButtonLocked = true
-        setImmersiveMode()
+
+        enableEdgeToEdge(
+            navigationBarStyle = SystemBarStyle.auto(
+                Color.TRANSPARENT,
+                Color.TRANSPARENT
+            )
+        )
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        ViewCompat.setOnApplyWindowInsetsListener(window.decorView) { view, insets ->
+            val systemBarsInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.setPadding(0, systemBarsInsets.top, 0, systemBarsInsets.bottom)
+            insets
+        }
+
+        val windowInsetsController = WindowInsetsControllerCompat(window, window.decorView)
+        // Make navigation bar transparent
+        windowInsetsController.isAppearanceLightNavigationBars = false
 
         // Use M3 color tokens for indicators
         setIndicatorColor(
             selectedIndicatorColor = MaterialColors.getColor(
-                this, com.google.android.material.R.attr.colorPrimaryFixed, null
+                this, com.google.android.material.R.attr.colorPrimaryVariant, null
             ),
             unselectedIndicatorColor = MaterialColors.getColor(
                 this, com.google.android.material.R.attr.colorSurfaceVariant, null
@@ -181,7 +205,7 @@ class PurelyIntro : AppIntro2() {
 
     private fun createNotificationChannel() {
         val descriptionText = "Shows reminders for screen time and when apps are blocked."
-        val importance = NotificationManager.IMPORTANCE_HIGH
+        val importance = NotificationManager.IMPORTANCE_LOW
         val channel = NotificationChannel(CHANNEL_ID, "Content Blocker", importance).apply {
             description = descriptionText
         }

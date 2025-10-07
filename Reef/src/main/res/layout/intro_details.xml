@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    android:background="?attr/colorSurfaceDim"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:gravity="center"
     android:orientation="vertical"
-    android:background="?colorSurface"
+    android:theme="@style/Theme.Reef"
     android:padding="48dp">
 
     <ImageView
@@ -15,6 +16,7 @@
         android:layout_marginBottom="48dp"
         android:contentDescription="@string/nothing"
         android:visibility="gone"
+        tools:visibility="visible"
         tools:src="@drawable/mobile_illustration" />
 
     <TextView
@@ -24,7 +26,7 @@
         android:fontFamily="sans-serif"
         android:gravity="center"
         android:textAppearance="?textAppearanceDisplaySmall"
-        android:textColor="?colorPrimaryVariant"
+        android:textColor="?colorOnPrimaryContainer"
         android:textStyle="bold"
         tools:text="App Name" />
 

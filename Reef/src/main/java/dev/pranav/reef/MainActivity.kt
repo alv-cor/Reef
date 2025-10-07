@@ -73,7 +73,10 @@ class MainActivity : AppCompatActivity() {
             if (FocusModeService.isRunning) {
                 Log.d("MainActivity", "Starting timer activity")
                 startActivity(Intent(this, TimerActivity::class.java).apply {
-                    putExtra("left", getFormattedTime(prefs.getLong("focus_time", 10 * 60 * 1000)))
+                    putExtra(
+                        FocusModeService.EXTRA_TIME_LEFT,
+                        getFormattedTime(prefs.getLong("focus_time", 10 * 60 * 1000))
+                    )
                 })
             } else {
                 prefs.edit { putBoolean("focus_mode", false) }

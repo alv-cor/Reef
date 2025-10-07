@@ -84,11 +84,10 @@ object AppLimits {
     data class AppUsageStats(val packageName: String, var totalTimeInForeground: Long)
 
     fun saveLimits() {
-        sharedPreferences.edit().apply {
+        sharedPreferences.edit {
             appLimits.forEach { (packageName, limit) ->
                 putLong(packageName, limit)
             }
-            apply()
         }
     }
 
@@ -167,6 +166,10 @@ object Whitelist {
         }
     }
 
+    fun getWhitelist(): Set<String> {
+        return sharedPreferences.all.keys.toSet()
+    }
+
     fun isWhitelisted(packageName: String): Boolean {
         return sharedPreferences.getBoolean(packageName, false)
     }
@@ -217,6 +220,7 @@ object Whitelist {
         "com.google.android.webview",
         "com.google.android.packageinstaller",
         "com.google.android.gms",
+        "com.google.android.googlequicksearchbox",
 
         "net.osmand",
         "com.fsck.k9",
