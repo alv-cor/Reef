@@ -179,7 +179,7 @@ class TimerActivity : ComponentActivity() {
     }
 
     private fun handleBackPress() {
-        if (FocusModeService.isRunning || FocusModeService.isPaused) {
+        if (FocusModeService.isRunning && !FocusModeService.isPaused) {
             val intent = Intent(Intent.ACTION_MAIN)
             intent.addCategory(Intent.CATEGORY_HOME)
             startActivity(intent)
