@@ -2,16 +2,43 @@ package dev.pranav.reef.util
 
 import android.content.Context
 import androidx.core.content.edit
-import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
+import com.google.gson.JsonPrimitive
+import com.google.gson.JsonSerializationContext
+import com.google.gson.JsonSerializer
 import com.google.gson.reflect.TypeToken
 import dev.pranav.reef.data.Routine
 import dev.pranav.reef.data.RoutineSchedule
+import java.lang.reflect.Type
 import java.time.DayOfWeek
 import java.util.UUID
 
 object RoutineManager {
     private const val ROUTINES_KEY = "routines"
-    private val gson = Gson() // Simple Gson instance - no custom adapters needed
+
+    private val gson = GsonBuilder()
+        .registerTypeAdapter(DayOfWeek::class.java, object : JsonSerializer<DayOfWeek> {
+            override fun serialize(
+                src: DayOfWeek?,
+                typeOfSrc: Type?,
+                context: JsonSerializationContext?
+            ): JsonElement {
+                return JsonPrimitive(src?.name)
+            }
+        })
+        .registerTypeAdapter(DayOfWeek::class.java, object : JsonDeserializer<DayOfWeek> {
+            override fun deserialize(
+                json: JsonElement?,
+                typeOfT: Type?,
+                context: JsonDeserializationContext?
+            ): DayOfWeek? {
+                return json?.asString?.let { DayOfWeek.valueOf(it) }
+            }
+        })
+        .create()
 
     fun getRoutines(): List<Routine> {
         val json = prefs.getString(ROUTINES_KEY, "[]") ?: "[]"
