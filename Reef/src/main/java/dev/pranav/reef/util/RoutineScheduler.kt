@@ -23,7 +23,8 @@ object RoutineScheduler {
     }
 
     fun scheduleRoutine(context: Context, routine: Routine) {
-        if (!routine.isEnabled || routine.schedule.type == RoutineSchedule.ScheduleType.MANUAL) {
+        val schedule = routine.schedule
+        if (!routine.isEnabled || schedule.type == RoutineSchedule.ScheduleType.MANUAL) {
             return
         }
 
@@ -33,7 +34,7 @@ object RoutineScheduler {
             activateRoutineNow(context, routine)
 
             // Only schedule deactivation
-            if (routine.schedule.endTime != null) {
+            if (schedule.endTime != null) {
                 scheduleRoutineAction(context, routine, isActivation = false)
             }
         } else {
@@ -41,7 +42,7 @@ object RoutineScheduler {
             scheduleRoutineAction(context, routine, isActivation = true)
 
             // Schedule deactivation if end time exists
-            if (routine.schedule.endTime != null) {
+            if (schedule.endTime != null) {
                 scheduleRoutineAction(context, routine, isActivation = false)
             }
         }
@@ -82,6 +83,8 @@ object RoutineScheduler {
     }
 
     fun scheduleRoutineAction(context: Context, routine: Routine, isActivation: Boolean) {
+        val schedule = routine.schedule
+
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, RoutineActivationReceiver::class.java).apply {
             putExtra("routine_id", routine.id)
@@ -96,9 +99,9 @@ object RoutineScheduler {
         )
 
         val triggerTime = if (isActivation) {
-            calculateNextTriggerTime(routine.schedule, useStartTime = true)
+            calculateNextTriggerTime(schedule, useStartTime = true)
         } else {
-            calculateNextTriggerTime(routine.schedule, useStartTime = false)
+            calculateNextTriggerTime(schedule, useStartTime = false)
         }
 
         if (triggerTime != null) {
@@ -125,7 +128,7 @@ object RoutineScheduler {
                         "Scheduled routine ${routine.name} $action (inexact) for ${Date(triggerTime)}"
                     )
                 }
-            } catch (e: SecurityException) {
+            } catch (_: SecurityException) {
                 alarmManager.set(
                     AlarmManager.RTC_WAKEUP,
                     triggerTime,
@@ -233,7 +236,6 @@ class RoutineActivationReceiver : BroadcastReceiver() {
     private fun deactivateRoutine(context: Context, routine: Routine) {
         Log.d("RoutineActivationReceiver", "Deactivating routine: ${routine.name}")
 
-        // Clear routine limits
         RoutineLimits.clearRoutineLimits()
 
         // Schedule next occurrence if recurring
@@ -241,7 +243,6 @@ class RoutineActivationReceiver : BroadcastReceiver() {
             RoutineScheduler.scheduleRoutine(context, routine)
         }
 
-        // Show notification about routine deactivation
         NotificationHelper.showRoutineDeactivatedNotification(context, routine)
     }
 }

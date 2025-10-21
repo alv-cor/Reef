@@ -98,26 +98,6 @@ class RoutinesActivity : ComponentActivity() {
             }
         }
     }
-
-    override fun onResume() {
-        super.onResume()
-        setContent {
-            ReefTheme {
-                RoutinesScreen(
-                    onBackPressed = { onBackPressedDispatcher.onBackPressed() },
-                    onCreateRoutine = {
-                        startActivity(Intent(this, CreateRoutineActivity::class.java))
-                    },
-                    onEditRoutine = { routine ->
-                        val intent = Intent(this, CreateRoutineActivity::class.java).apply {
-                            putExtra("routine_id", routine.id)
-                        }
-                        startActivity(intent)
-                    }
-                )
-            }
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -198,7 +178,7 @@ fun RoutinesScreen(
                                 onEditRoutine(routine)
                             }
                         },
-                        onToggle = { enabled ->
+                        onToggle = { _ ->
                             RoutineManager.toggleRoutine(routine.id, context)
                             routines = RoutineManager.getRoutines()
                         }
@@ -219,6 +199,7 @@ fun RoutinesScreen(
                         activateRoutineNow(routine, context)
                         showActivateDialog = null
 
+                        @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
                         val limitsText = when (routine.limits.size) {
                             0 -> "No app limits were applied"
                             1 -> "1 app limit has been applied"
@@ -408,7 +389,9 @@ fun RoutineItem(
     }
 }
 
-private fun formatSchedule(schedule: RoutineSchedule): String {
+private fun formatSchedule(schedule: RoutineSchedule?): String {
+    if (schedule == null) return "Unknown schedule"
+
     return when (schedule.type) {
         RoutineSchedule.ScheduleType.DAILY -> {
             val timeRange = if (schedule.time != null && schedule.endTime != null) {

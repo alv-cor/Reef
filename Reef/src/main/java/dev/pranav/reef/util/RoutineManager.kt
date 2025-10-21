@@ -2,57 +2,127 @@ package dev.pranav.reef.util
 
 import android.content.Context
 import androidx.core.content.edit
-import com.google.gson.GsonBuilder
-import com.google.gson.JsonDeserializationContext
-import com.google.gson.JsonDeserializer
-import com.google.gson.JsonElement
-import com.google.gson.JsonPrimitive
-import com.google.gson.JsonSerializationContext
-import com.google.gson.JsonSerializer
-import com.google.gson.reflect.TypeToken
 import dev.pranav.reef.data.Routine
 import dev.pranav.reef.data.RoutineSchedule
-import java.lang.reflect.Type
+import org.json.JSONArray
+import org.json.JSONObject
 import java.time.DayOfWeek
 import java.util.UUID
 
 object RoutineManager {
     private const val ROUTINES_KEY = "routines"
 
-    private val gson = GsonBuilder()
-        .registerTypeAdapter(DayOfWeek::class.java, object : JsonSerializer<DayOfWeek> {
-            override fun serialize(
-                src: DayOfWeek?,
-                typeOfSrc: Type?,
-                context: JsonSerializationContext?
-            ): JsonElement {
-                return JsonPrimitive(src?.name)
-            }
-        })
-        .registerTypeAdapter(DayOfWeek::class.java, object : JsonDeserializer<DayOfWeek> {
-            override fun deserialize(
-                json: JsonElement?,
-                typeOfT: Type?,
-                context: JsonDeserializationContext?
-            ): DayOfWeek? {
-                return json?.asString?.let { DayOfWeek.valueOf(it) }
-            }
-        })
-        .create()
-
     fun getRoutines(): List<Routine> {
         val json = prefs.getString(ROUTINES_KEY, "[]") ?: "[]"
-        val type = object : TypeToken<List<Routine>>() {}.type
-        return gson.fromJson(json, type)
+        return try {
+            val jsonArray = JSONArray(json)
+            val routines = mutableListOf<Routine>()
+
+            for (i in 0 until jsonArray.length()) {
+                val routineJson = jsonArray.getJSONObject(i)
+                val routine = parseRoutine(routineJson)
+                if (routine != null) {
+                    routines.add(routine)
+                }
+            }
+            routines
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun parseRoutine(json: JSONObject): Routine? {
+        return try {
+            val scheduleJson = json.getJSONObject("schedule")
+            val schedule = RoutineSchedule(
+                type = RoutineSchedule.ScheduleType.valueOf(scheduleJson.getString("type")),
+                timeHour = if (scheduleJson.has("timeHour")) scheduleJson.getInt("timeHour") else null,
+                timeMinute = if (scheduleJson.has("timeMinute")) scheduleJson.getInt("timeMinute") else null,
+                endTimeHour = if (scheduleJson.has("endTimeHour")) scheduleJson.getInt("endTimeHour") else null,
+                endTimeMinute = if (scheduleJson.has("endTimeMinute")) scheduleJson.getInt("endTimeMinute") else null,
+                daysOfWeek = parseDaysOfWeek(scheduleJson.optJSONArray("daysOfWeek")),
+                isRecurring = scheduleJson.optBoolean("isRecurring", true)
+            )
+
+            val limitsArray = json.getJSONArray("limits")
+            val limits = mutableListOf<Routine.AppLimit>()
+            for (i in 0 until limitsArray.length()) {
+                val limitJson = limitsArray.getJSONObject(i)
+                limits.add(
+                    Routine.AppLimit(
+                        packageName = limitJson.getString("packageName"),
+                        limitMinutes = limitJson.getInt("limitMinutes")
+                    )
+                )
+            }
+
+            Routine(
+                id = json.getString("id"),
+                name = json.getString("name"),
+                isEnabled = json.getBoolean("isEnabled"),
+                schedule = schedule,
+                limits = limits
+            )
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun parseDaysOfWeek(jsonArray: JSONArray?): Set<DayOfWeek> {
+        if (jsonArray == null) return emptySet()
+        val days = mutableSetOf<DayOfWeek>()
+        for (i in 0 until jsonArray.length()) {
+            try {
+                days.add(DayOfWeek.valueOf(jsonArray.getString(i)))
+            } catch (_: Exception) {
+                // Skip invalid days
+            }
+        }
+        return days
     }
 
     fun saveRoutines(routines: List<Routine>, context: Context? = null) {
-        val json = gson.toJson(routines)
-        prefs.edit { putString(ROUTINES_KEY, json) }
+        val jsonArray = JSONArray()
+        routines.forEach { routine ->
+            jsonArray.put(routineToJson(routine))
+        }
+        prefs.edit { putString(ROUTINES_KEY, jsonArray.toString()) }
 
-        // Reschedule all routines when saved
         context?.let { ctx ->
             RoutineScheduler.scheduleAllRoutines(ctx)
+        }
+    }
+
+    private fun routineToJson(routine: Routine): JSONObject {
+        return JSONObject().apply {
+            put("id", routine.id)
+            put("name", routine.name)
+            put("isEnabled", routine.isEnabled)
+
+            val schedule = routine.schedule
+            val scheduleJson = JSONObject().apply {
+                put("type", schedule?.type?.name ?: "MANUAL")
+                schedule?.timeHour?.let { put("timeHour", it) }
+                schedule?.timeMinute?.let { put("timeMinute", it) }
+                schedule?.endTimeHour?.let { put("endTimeHour", it) }
+                schedule?.endTimeMinute?.let { put("endTimeMinute", it) }
+
+                val daysArray = JSONArray()
+                schedule?.daysOfWeek?.forEach { daysArray.put(it.name) }
+                put("daysOfWeek", daysArray)
+
+                put("isRecurring", schedule?.isRecurring ?: true)
+            }
+            put("schedule", scheduleJson)
+
+            val limitsArray = JSONArray()
+            routine.limits.forEach { limit ->
+                limitsArray.put(JSONObject().apply {
+                    put("packageName", limit.packageName)
+                    put("limitMinutes", limit.limitMinutes)
+                })
+            }
+            put("limits", limitsArray)
         }
     }
 
@@ -89,16 +159,13 @@ object RoutineManager {
 
             context?.let { ctx ->
                 if (oldRoutine.isEnabled) {
-                    // Was enabled, now disabled - cancel scheduling and clear limits if active
                     RoutineScheduler.cancelRoutine(ctx, routineId)
 
-                    // Check if this routine is currently active and clear its limits
                     val activeRoutineId = RoutineLimits.getActiveRoutineId()
                     if (activeRoutineId == routineId) {
                         RoutineLimits.clearRoutineLimits()
                     }
                 } else {
-                    // Was disabled, now enabled - schedule it
                     RoutineScheduler.scheduleRoutine(ctx, routines[index])
                 }
             }

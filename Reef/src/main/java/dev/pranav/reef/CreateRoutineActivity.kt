@@ -414,7 +414,7 @@ fun CreateRoutineScreen(
                     if (result) onSaveComplete()
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shapes = ButtonDefaults.shapes(),
                 contentPadding = PaddingValues(vertical = 16.dp)
             ) {
                 Text(
@@ -427,7 +427,7 @@ fun CreateRoutineScreen(
                 OutlinedButton(
                     onClick = { showDeleteDialog = true },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
+                    shapes = ButtonDefaults.shapes(),
                     contentPadding = PaddingValues(vertical = 16.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.error

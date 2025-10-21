@@ -13,8 +13,8 @@ android {
         applicationId = "dev.pranav.reef"
         minSdk = 26
         targetSdk = 36
-        versionCode = 202
-        versionName = "2.0.2"
+        versionCode = 203
+        versionName = "2.0.3"
     }
 
     viewBinding.enable = true
@@ -26,8 +26,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            // Causing issues smh
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             )
