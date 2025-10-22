@@ -9,6 +9,10 @@ object RoutineLimits {
     private const val ACTIVE_ROUTINE_KEY = "active_routine_id"
     private const val ROUTINE_START_TIME_KEY = "routine_start_time"
     private val routineLimits = mutableMapOf<String, Long>()
+    
+    // Track when reminders were sent for routine limits
+    private val routineReminderSentMap = mutableMapOf<String, Long>()
+    private val routineGracePeriodStartMap = mutableMapOf<String, Long>()
 
     fun setRoutineLimits(limits: Map<String, Int>, routineId: String) {
         // Clear existing routine limits
@@ -137,5 +141,48 @@ object RoutineLimits {
                 routineLimits[packageName] = value
             }
         }
+    }
+    
+    fun hasRoutineReminderBeenSent(packageName: String): Boolean {
+        val lastSent = routineReminderSentMap[packageName] ?: return false
+        val routineStartTime = prefs.getLong(ROUTINE_START_TIME_KEY, 0L)
+        // Reminder is valid if sent during this routine session
+        return lastSent >= routineStartTime
+    }
+    
+    fun markRoutineReminderSent(packageName: String) {
+        routineReminderSentMap[packageName] = System.currentTimeMillis()
+    }
+    
+    fun clearRoutineReminderSent(packageName: String) {
+        routineReminderSentMap.remove(packageName)
+    }
+    
+    fun isInRoutineGracePeriod(packageName: String): Boolean {
+        val graceStart = routineGracePeriodStartMap[packageName] ?: return false
+        val elapsed = System.currentTimeMillis() - graceStart
+        return elapsed < GRACE_PERIOD_MS
+    }
+    
+    fun startRoutineGracePeriod(packageName: String) {
+        routineGracePeriodStartMap[packageName] = System.currentTimeMillis()
+    }
+    
+    fun hasRoutineGracePeriodStarted(packageName: String): Boolean {
+        val graceStart = routineGracePeriodStartMap[packageName] ?: return false
+        val routineStartTime = prefs.getLong(ROUTINE_START_TIME_KEY, 0L)
+        // Grace period is valid if started during this routine session
+        return graceStart >= routineStartTime
+    }
+    
+    fun clearRoutineGracePeriod(packageName: String) {
+        routineGracePeriodStartMap.remove(packageName)
+    }
+    
+    fun getRemainingRoutineGracePeriod(packageName: String): Long {
+        val graceStart = routineGracePeriodStartMap[packageName] ?: return 0L
+        val elapsed = System.currentTimeMillis() - graceStart
+        val remaining = GRACE_PERIOD_MS - elapsed
+        return if (remaining > 0) remaining else 0L
     }
 }

@@ -14,6 +14,10 @@ object AppLimits {
     private lateinit var sharedPreferences: SharedPreferences
     private val appLimits = mutableMapOf<String, Long>()
     private lateinit var usageStatsManager: UsageStatsManager
+    
+    // Track when reminders were sent to avoid duplicate notifications
+    private val reminderSentMap = mutableMapOf<String, Long>()
+    private val gracePeriodStartMap = mutableMapOf<String, Long>()
 
     fun setLimit(packageName: String, limit: Int) {
         // limit is in minutes, convert to milliseconds
@@ -146,6 +150,63 @@ object AppLimits {
                 }
             }
         }
+    }
+    
+    fun hasReminderBeenSent(packageName: String): Boolean {
+        val lastSent = reminderSentMap[packageName] ?: return false
+        val startOfDay = java.time.ZonedDateTime.ofInstant(
+            java.time.Instant.now(), 
+            java.time.ZoneId.systemDefault()
+        )
+            .toLocalDate()
+            .atStartOfDay(java.time.ZoneOffset.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        // Reminder is valid if sent today
+        return lastSent >= startOfDay
+    }
+    
+    fun markReminderSent(packageName: String) {
+        reminderSentMap[packageName] = System.currentTimeMillis()
+    }
+    
+    fun clearReminderSent(packageName: String) {
+        reminderSentMap.remove(packageName)
+    }
+    
+    fun isInGracePeriod(packageName: String): Boolean {
+        val graceStart = gracePeriodStartMap[packageName] ?: return false
+        val elapsed = System.currentTimeMillis() - graceStart
+        return elapsed < GRACE_PERIOD_MS
+    }
+    
+    fun startGracePeriod(packageName: String) {
+        gracePeriodStartMap[packageName] = System.currentTimeMillis()
+    }
+    
+    fun hasGracePeriodStarted(packageName: String): Boolean {
+        val graceStart = gracePeriodStartMap[packageName] ?: return false
+        val startOfDay = java.time.ZonedDateTime.ofInstant(
+            java.time.Instant.now(), 
+            java.time.ZoneId.systemDefault()
+        )
+            .toLocalDate()
+            .atStartOfDay(java.time.ZoneOffset.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        // Grace period is valid if started today
+        return graceStart >= startOfDay
+    }
+    
+    fun clearGracePeriod(packageName: String) {
+        gracePeriodStartMap.remove(packageName)
+    }
+    
+    fun getRemainingGracePeriod(packageName: String): Long {
+        val graceStart = gracePeriodStartMap[packageName] ?: return 0L
+        val elapsed = System.currentTimeMillis() - graceStart
+        val remaining = GRACE_PERIOD_MS - elapsed
+        return if (remaining > 0) remaining else 0L
     }
 }
 

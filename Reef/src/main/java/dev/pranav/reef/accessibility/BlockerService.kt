@@ -16,7 +16,10 @@ import dev.pranav.reef.AppUsageActivity
 import dev.pranav.reef.R
 import dev.pranav.reef.util.AppLimits
 import dev.pranav.reef.util.CHANNEL_ID
+import dev.pranav.reef.util.GRACE_PERIOD_MS
+import dev.pranav.reef.util.NotificationHelper
 import dev.pranav.reef.util.NotificationHelper.createNotificationChannel
+import dev.pranav.reef.util.REMINDER_TIME_MS
 import dev.pranav.reef.util.RoutineLimits
 import dev.pranav.reef.util.RoutineManager
 import dev.pranav.reef.util.Whitelist
@@ -78,10 +81,35 @@ class BlockerService : AccessibilityService() {
                     "Routine check for $packageName - UsageTime: $routineUsageTime ms, Limit: $routineLimit ms"
                 )
 
+                // Check if we should send a reminder (10 minutes before limit)
+                val timeUntilLimit = routineLimit - routineUsageTime
+                if (timeUntilLimit in 1..REMINDER_TIME_MS && !RoutineLimits.hasRoutineReminderBeenSent(packageName)) {
+                    Log.d("BlockerService", "Sending reminder for $packageName - ${timeUntilLimit / 60000} minutes remaining")
+                    NotificationHelper.showReminderNotification(this, packageName, timeUntilLimit)
+                    RoutineLimits.markRoutineReminderSent(packageName)
+                }
+
                 if (routineUsageTime >= routineLimit) {
+                    // Check if grace period is enabled and active
+                    if (!RoutineLimits.hasRoutineGracePeriodStarted(packageName)) {
+                        // Start grace period and show notification
+                        Log.d("BlockerService", "Starting grace period for $packageName")
+                        RoutineLimits.startRoutineGracePeriod(packageName)
+                        NotificationHelper.showGracePeriodNotification(this, packageName)
+                        return
+                    }
+                    
+                    // Check if still in grace period
+                    if (RoutineLimits.isInRoutineGracePeriod(packageName)) {
+                        val remaining = RoutineLimits.getRemainingRoutineGracePeriod(packageName)
+                        Log.d("BlockerService", "Grace period active for $packageName - ${remaining / 1000}s remaining")
+                        return
+                    }
+                    
+                    // Grace period expired, block the app
                     Log.d(
                         "BlockerService",
-                        "BLOCKING $packageName - routine usage ($routineUsageTime) >= limit ($routineLimit)"
+                        "BLOCKING $packageName - routine usage ($routineUsageTime) >= limit ($routineLimit) and grace period expired"
                     )
                     showTimeLimitNotification(packageName, "routine")
                     performGlobalAction(GLOBAL_ACTION_HOME)
@@ -105,10 +133,35 @@ class BlockerService : AccessibilityService() {
                     "UsageTime: $usageTime ms, Limit: $limit ms, LimitType: regular"
                 )
 
+                // Check if we should send a reminder (10 minutes before limit)
+                val timeUntilLimit = limit - usageTime
+                if (timeUntilLimit in 1..REMINDER_TIME_MS && !AppLimits.hasReminderBeenSent(packageName)) {
+                    Log.d("BlockerService", "Sending reminder for $packageName - ${timeUntilLimit / 60000} minutes remaining")
+                    NotificationHelper.showReminderNotification(this, packageName, timeUntilLimit)
+                    AppLimits.markReminderSent(packageName)
+                }
+
                 if (usageTime >= limit) {
+                    // Check if grace period is enabled and active
+                    if (!AppLimits.hasGracePeriodStarted(packageName)) {
+                        // Start grace period and show notification
+                        Log.d("BlockerService", "Starting grace period for $packageName")
+                        AppLimits.startGracePeriod(packageName)
+                        NotificationHelper.showGracePeriodNotification(this, packageName)
+                        return
+                    }
+                    
+                    // Check if still in grace period
+                    if (AppLimits.isInGracePeriod(packageName)) {
+                        val remaining = AppLimits.getRemainingGracePeriod(packageName)
+                        Log.d("BlockerService", "Grace period active for $packageName - ${remaining / 1000}s remaining")
+                        return
+                    }
+                    
+                    // Grace period expired, block the app
                     Log.d(
                         "BlockerService",
-                        "BLOCKING $packageName - usage ($usageTime) >= limit ($limit)"
+                        "BLOCKING $packageName - usage ($usageTime) >= limit ($limit) and grace period expired"
                     )
                     showTimeLimitNotification(packageName, "regular")
                     performGlobalAction(GLOBAL_ACTION_HOME)

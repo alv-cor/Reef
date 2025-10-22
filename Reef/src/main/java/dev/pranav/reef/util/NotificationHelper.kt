@@ -16,6 +16,8 @@ import dev.pranav.reef.data.Routine
 
 object NotificationHelper {
     private const val ROUTINE_NOTIFICATION_ID = 100
+    private const val REMINDER_NOTIFICATION_ID = 200
+    private const val GRACE_PERIOD_NOTIFICATION_ID = 300
 
     fun Context.createNotificationChannel() {
         val descriptionText = "Shows reminders for screen time and when apps are blocked."
@@ -79,6 +81,80 @@ object NotificationHelper {
         ) {
             NotificationManagerCompat.from(context)
                 .notify(ROUTINE_NOTIFICATION_ID + 1, builder.build())
+        }
+    }
+    
+    fun showReminderNotification(context: Context, packageName: String, timeRemaining: Long) {
+        val appName = try {
+            context.packageManager.getApplicationLabel(
+                context.packageManager.getApplicationInfo(packageName, 0)
+            )
+        } catch (_: PackageManager.NameNotFoundException) {
+            packageName
+        }
+        
+        val minutes = (timeRemaining / 60000).toInt()
+        
+        val intent = Intent(context, dev.pranav.reef.AppUsageActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setContentTitle("Time Limit Reminder")
+            .setContentText("$appName will be blocked in $minutes minutes")
+            .setSmallIcon(R.drawable.round_hourglass_disabled_24)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+
+        if (ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            NotificationManagerCompat.from(context).notify(
+                REMINDER_NOTIFICATION_ID + packageName.hashCode(), 
+                builder.build()
+            )
+        }
+    }
+    
+    fun showGracePeriodNotification(context: Context, packageName: String) {
+        val appName = try {
+            context.packageManager.getApplicationLabel(
+                context.packageManager.getApplicationInfo(packageName, 0)
+            )
+        } catch (_: PackageManager.NameNotFoundException) {
+            packageName
+        }
+        
+        val intent = Intent(context, dev.pranav.reef.AppUsageActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setContentTitle("Time Limit Reached")
+            .setContentText("$appName will be blocked in 5 minutes. Please finish up.")
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText("You've reached your time limit for $appName. The app will be blocked in 5 minutes. Please wrap up your current activity.")
+            )
+            .setSmallIcon(R.drawable.round_hourglass_disabled_24)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+
+        if (ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            NotificationManagerCompat.from(context).notify(
+                GRACE_PERIOD_NOTIFICATION_ID + packageName.hashCode(), 
+                builder.build()
+            )
         }
     }
 }
