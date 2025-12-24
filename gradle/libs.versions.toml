@@ -1,28 +1,23 @@
 [versions]
-agp = "9.0.0-alpha13"
-appintro = "c235ce859c"
-firebaseBom = "34.4.0"
-kotlin = "2.2.20"
+agp = "9.1.0-alpha01"
+appintro = "0f41a8dcff"
+kotlin = "2.3.0"
 coreKtx = "1.17.0"
 appcompat = "1.7.1"
-material = "1.14.0-alpha05"
-activity = "1.12.0-alpha09"
-playServicesAds = "24.7.0"
+material = "1.14.0-alpha08"
+activity = "1.12.2"
 googleServices = "4.4.4"
 gson = "2.13.2"
-composeBom = "2025.10.00"
-material3 = "1.5.0-alpha06"
-vico = "2.2.1"
+composeBom = "2025.12.01"
+material3 = "1.5.0-alpha11"
+vico = "2.3.6"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 appintro = { module = "com.github.AppIntro:AppIntro", version.ref = "appintro" }
-firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
-firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-activity = { group = "androidx.activity", name = "activity-ktx", version.ref = "activity" }
-play-services-ads = { module = "com.google.android.gms:play-services-ads", version.ref = "playServicesAds" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }

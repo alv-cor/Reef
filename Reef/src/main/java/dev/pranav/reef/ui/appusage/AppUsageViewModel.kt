@@ -8,6 +8,8 @@ import android.content.pm.PackageManager
 import android.os.Process
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -21,6 +23,7 @@ import java.util.Locale
 
 data class AppUsageStats(
     val applicationInfo: ApplicationInfo,
+    val label: String, // Optimization: Cached label
     val totalTime: Long
 )
 
@@ -46,7 +49,7 @@ class AppUsageViewModel(
     private val _weeklyData = mutableStateOf<List<WeeklyUsageData>>(emptyList())
     val weeklyData: State<List<WeeklyUsageData>> = _weeklyData
 
-    private val _totalUsage = mutableStateOf(1L)
+    private val _totalUsage = mutableLongStateOf(1L) // Optimization: primitive state
     val totalUsage: State<Long> = _totalUsage
 
     private val _isLoading = mutableStateOf(true)
@@ -58,7 +61,7 @@ class AppUsageViewModel(
     private val _selectedDayTimestamp = mutableStateOf<Long?>(null)
     val selectedDayTimestamp: State<Long?> = _selectedDayTimestamp
 
-    private val _weekOffset = mutableStateOf(0)
+    private val _weekOffset = mutableIntStateOf(0) // Optimization: primitive state
     val weekOffset: State<Int> = _weekOffset
 
     private val _selectedDayIndex = mutableStateOf<Int?>(null)
@@ -73,8 +76,6 @@ class AppUsageViewModel(
     var selectedSort by mutableStateOf(UsageSortOrder.TIME_DESC)
         private set
 
-    // Cache raw data to avoid reloading
-    private var rawAppUsageMap: Map<String, Long> = emptyMap()
     private var allAppStats: List<AppUsageStats> = emptyList()
 
     init {
@@ -120,13 +121,13 @@ class AppUsageViewModel(
     }
 
     fun previousWeek() {
-        _weekOffset.value -= 1
+        _weekOffset.intValue -= 1
         loadWeekData()
     }
 
     fun nextWeek() {
-        if (_weekOffset.value < 0) {
-            _weekOffset.value += 1
+        if (_weekOffset.intValue < 0) {
+            _weekOffset.intValue += 1
             loadWeekData()
         }
     }
@@ -135,28 +136,18 @@ class AppUsageViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 _isLoading.value = true
-
-                // Load last 7 days of data initially
-                val cal = Calendar.getInstance()
-                cal.add(Calendar.DAY_OF_YEAR, -6)
-                cal.set(Calendar.HOUR_OF_DAY, 0)
-                cal.set(Calendar.MINUTE, 0)
-                cal.set(Calendar.SECOND, 0)
-                cal.set(Calendar.MILLISECOND, 0)
+                val cal = Calendar.getInstance().apply {
+                    add(Calendar.DAY_OF_YEAR, -6)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
                 val startTime = cal.timeInMillis
                 val endTime = System.currentTimeMillis()
 
-                rawAppUsageMap = queryAppUsageEvents(startTime, endTime)
-                allAppStats = rawAppUsageMap
-                    .filter { it.value > 5 * 1000 && it.key != packageName }
-                    .mapNotNull { (pkg, totalTime) ->
-                        try {
-                            launcherApps.getApplicationInfo(pkg, 0, Process.myUserHandle())
-                                ?.let { info -> AppUsageStats(info, totalTime) }
-                        } catch (_: PackageManager.NameNotFoundException) {
-                            null
-                        }
-                    }
+                val rawMap = queryAppUsageEvents(startTime, endTime)
+                allAppStats = processUsageMap(rawMap)
 
                 loadWeekData()
                 filterAndSortData()
@@ -183,58 +174,41 @@ class AppUsageViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val (startTime, endTime) = calculateTimeRange()
 
-            // Filter data based on time range
-            val filteredStats = if (_selectedDayTimestamp.value != null) {
-                // For specific day, re-query to get accurate data
-                val dayUsage = queryAppUsageEvents(startTime, endTime)
-                dayUsage
-                    .filter { it.value > 5 * 1000 && it.key != packageName }
-                    .mapNotNull { (pkg, totalTime) ->
-                        try {
-                            launcherApps.getApplicationInfo(pkg, 0, Process.myUserHandle())
-                                ?.let { info -> AppUsageStats(info, totalTime) }
-                        } catch (_: PackageManager.NameNotFoundException) {
-                            null
-                        }
-                    }
-            } else if (selectedRange == UsageRange.TODAY) {
-                // Filter from cached data for today
-                val todayStart = Calendar.getInstance().apply {
-                    set(Calendar.HOUR_OF_DAY, 0)
-                    set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0)
-                    set(Calendar.MILLISECOND, 0)
-                }.timeInMillis
-
-                val todayUsage = queryAppUsageEvents(todayStart, System.currentTimeMillis())
-                todayUsage
-                    .filter { it.value > 5 * 1000 && it.key != packageName }
-                    .mapNotNull { (pkg, totalTime) ->
-                        try {
-                            launcherApps.getApplicationInfo(pkg, 0, Process.myUserHandle())
-                                ?.let { info -> AppUsageStats(info, totalTime) }
-                        } catch (_: PackageManager.NameNotFoundException) {
-                            null
-                        }
-                    }
+            val stats =
+                if (_selectedDayTimestamp.value != null || selectedRange == UsageRange.TODAY) {
+                    processUsageMap(queryAppUsageEvents(startTime, endTime))
             } else {
-                // Use cached data for last 7 days
                 allAppStats
             }
 
-            // Sort data
             val sortedStats = when (selectedSort) {
-                UsageSortOrder.TIME_DESC -> filteredStats.sortedByDescending { it.totalTime }
-                UsageSortOrder.NAME_ASC -> filteredStats.sortedBy {
-                    it.applicationInfo.loadLabel(packageManager).toString()
-                }
+                UsageSortOrder.TIME_DESC -> stats.sortedByDescending { it.totalTime }
+                UsageSortOrder.NAME_ASC -> stats.sortedBy { it.label }
             }
 
             withContext(Dispatchers.Main) {
-                _totalUsage.value = sortedStats.sumOf { it.totalTime }.coerceAtLeast(1L)
+                _totalUsage.longValue = sortedStats.sumOf { it.totalTime }.coerceAtLeast(1L)
                 _appUsageStats.value = sortedStats
             }
         }
+    }
+
+    private fun processUsageMap(usageMap: Map<String, Long>): List<AppUsageStats> {
+        return usageMap
+            .filter { it.value > 5000 && it.key != packageName }
+            .mapNotNull { (pkg, totalTime) ->
+                try {
+                    launcherApps.getApplicationInfo(pkg, 0, Process.myUserHandle())?.let { info ->
+                        AppUsageStats(
+                            applicationInfo = info,
+                            label = info.loadLabel(packageManager).toString(),
+                            totalTime = totalTime
+                        )
+                    }
+                } catch (_: PackageManager.NameNotFoundException) {
+                    null
+                }
+            }
     }
 
     private fun calculateTimeRange(): Pair<Long, Long> {
@@ -275,111 +249,91 @@ class AppUsageViewModel(
         }
     }
 
-    private fun generateWeeklyData(): List<WeeklyUsageData> {
-        val calendar = Calendar.getInstance()
-        val daysToSubtract = (_weekOffset.value * 7) + 6
-        calendar.add(Calendar.DAY_OF_YEAR, -daysToSubtract)
-
-        val dayFormat = SimpleDateFormat("EEE", Locale.getDefault())
-        val result = mutableListOf<WeeklyUsageData>()
-        val now = System.currentTimeMillis()
-        val todayStart = Calendar.getInstance().apply {
+    private fun getStartOfDay(timestamp: Long): Long {
+        return Calendar.getInstance().apply {
+            timeInMillis = timestamp
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
+    }
 
-        for (i in 0 until 7) {
-            val startOfDay = calendar.clone() as Calendar
-            startOfDay.set(Calendar.HOUR_OF_DAY, 0)
-            startOfDay.set(Calendar.MINUTE, 0)
-            startOfDay.set(Calendar.SECOND, 0)
-            startOfDay.set(Calendar.MILLISECOND, 0)
-            val dayStartMillis = startOfDay.timeInMillis
+    private fun generateWeeklyData(): List<WeeklyUsageData> {
+        val dayFormat = SimpleDateFormat("EEE", Locale.getDefault())
+        val result = mutableListOf<WeeklyUsageData>()
 
-            // For today, use current time as end; for past days, use end of day
-            val endOfDay = if (dayStartMillis >= todayStart) {
-                // This is today - use current time
-                now
-            } else {
-                // This is a past day - use end of day
-                val end = startOfDay.clone() as Calendar
-                end.set(Calendar.HOUR_OF_DAY, 23)
-                end.set(Calendar.MINUTE, 59)
-                end.set(Calendar.SECOND, 59)
-                end.set(Calendar.MILLISECOND, 999)
-                end.timeInMillis
-            }
+        val now = System.currentTimeMillis()
 
-            val totalUsage = queryAppUsageEvents(
-                dayStartMillis,
-                endOfDay
-            ).values.sum()
+        repeat(7) { i ->
+            val cal = Calendar.getInstance()
+            val daysAgo = (_weekOffset.intValue * 7) + (6 - i)
+            cal.add(Calendar.DAY_OF_YEAR, -daysAgo)
+
+            cal.set(Calendar.HOUR_OF_DAY, 0)
+            cal.set(Calendar.MINUTE, 0)
+            cal.set(Calendar.SECOND, 0)
+            cal.set(Calendar.MILLISECOND, 0)
+
+            val startMillis = cal.timeInMillis
+
+            cal.set(Calendar.HOUR_OF_DAY, 23)
+            cal.set(Calendar.MINUTE, 59)
+            cal.set(Calendar.SECOND, 59)
+            cal.set(Calendar.MILLISECOND, 999)
+
+            val endMillis = minOf(cal.timeInMillis, now)
+
+            // Only query if end is after start (prevents crashes on weird DST shifts)
+            val totalUsageMs = if (endMillis > startMillis) {
+                queryAppUsageEvents(startMillis, endMillis).values.sum()
+            } else 0L
 
             result.add(
                 WeeklyUsageData(
-                    dayOfWeek = dayFormat.format(startOfDay.time),
-                    totalUsageHours = totalUsage / (1000f * 60f * 60f),
-                    timestamp = dayStartMillis
+                    dayOfWeek = dayFormat.format(cal.time),
+                    totalUsageHours = totalUsageMs / 3600000f,
+                    timestamp = startMillis
                 )
             )
-            calendar.add(Calendar.DAY_OF_YEAR, 1)
         }
-
-        // Check if the NEXT previous week (the one we'd navigate to) has any data
         checkPreviousWeekData()
-
         return result
     }
 
     private fun checkPreviousWeekData() {
         viewModelScope.launch(Dispatchers.IO) {
-            // Calculate the start of the previous week (one week before current displayed week)
             val calendar = Calendar.getInstance()
-            val daysToSubtract = ((_weekOffset.value - 1) * 7) + 6
+            val daysToSubtract = ((_weekOffset.intValue - 1) * 7) + 6
             calendar.add(Calendar.DAY_OF_YEAR, -daysToSubtract)
 
-            // Check if we're going too far back (more than 90 days)
-            val maxWeeksBack = 13 // ~3 months
-            if (_weekOffset.value <= -maxWeeksBack) {
-                withContext(Dispatchers.Main) {
-                    _canGoPrevious.value = false
-                }
+            val maxWeeksBack = 13
+            if (_weekOffset.intValue <= -maxWeeksBack) {
+                withContext(Dispatchers.Main) { _canGoPrevious.value = false }
                 return@launch
             }
 
-            // Check if any day in the previous week has data
             var hasData = false
-            for (i in 0 until 7) {
-                val startOfDay = calendar.clone() as Calendar
-                startOfDay.set(Calendar.HOUR_OF_DAY, 0)
-                startOfDay.set(Calendar.MINUTE, 0)
-                startOfDay.set(Calendar.SECOND, 0)
-                startOfDay.set(Calendar.MILLISECOND, 0)
+            repeat(7) {
+                val start = calendar.clone() as Calendar
+                start.set(Calendar.HOUR_OF_DAY, 0); start.set(Calendar.MINUTE, 0); start.set(
+                Calendar.SECOND,
+                0
+            ); start.set(Calendar.MILLISECOND, 0)
+                val end = start.clone() as Calendar
+                end.set(Calendar.HOUR_OF_DAY, 23); end.set(
+                Calendar.MINUTE,
+                59
+            ); end.set(Calendar.SECOND, 59); end.set(Calendar.MILLISECOND, 999)
 
-                val endOfDay = startOfDay.clone() as Calendar
-                endOfDay.set(Calendar.HOUR_OF_DAY, 23)
-                endOfDay.set(Calendar.MINUTE, 59)
-                endOfDay.set(Calendar.SECOND, 59)
-                endOfDay.set(Calendar.MILLISECOND, 999)
-
-                val totalUsage = queryAppUsageEvents(
-                    startOfDay.timeInMillis,
-                    endOfDay.timeInMillis
-                ).values.sum()
-
-                if (totalUsage > 0) {
+                if (queryAppUsageEvents(start.timeInMillis, end.timeInMillis).values.sum() > 0) {
                     hasData = true
-                    break
+                    return@repeat
                 }
-
                 calendar.add(Calendar.DAY_OF_YEAR, 1)
             }
 
-            withContext(Dispatchers.Main) {
-                _canGoPrevious.value = hasData
-            }
+            withContext(Dispatchers.Main) { _canGoPrevious.value = hasData }
         }
     }
 
@@ -391,19 +345,20 @@ class AppUsageViewModel(
 
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
+            val pkg = event.packageName
 
             when (event.eventType) {
                 UsageEvents.Event.ACTIVITY_RESUMED -> {
-                    lastResumeTimes[event.packageName] = event.timeStamp
+                    lastResumeTimes[pkg] = event.timeStamp
                 }
 
-                UsageEvents.Event.ACTIVITY_PAUSED,
-                UsageEvents.Event.ACTIVITY_STOPPED -> {
-                    val startTime = lastResumeTimes.remove(event.packageName)
+                UsageEvents.Event.ACTIVITY_PAUSED, UsageEvents.Event.ACTIVITY_STOPPED -> {
+                    val startTime = lastResumeTimes.remove(pkg)
                     if (startTime != null) {
                         val duration = event.timeStamp - startTime
-                        usageMap[event.packageName] =
-                            (usageMap[event.packageName] ?: 0L) + duration
+                        if (duration > 0) {
+                            usageMap[pkg] = (usageMap[pkg] ?: 0L) + duration
+                        }
                     }
                 }
             }
@@ -411,7 +366,9 @@ class AppUsageViewModel(
 
         lastResumeTimes.forEach { (pkg, startTime) ->
             val duration = end - startTime
-            usageMap[pkg] = (usageMap[pkg] ?: 0L) + duration
+            if (duration > 0) {
+                usageMap[pkg] = (usageMap[pkg] ?: 0L) + duration
+            }
         }
 
         return usageMap
