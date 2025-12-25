@@ -26,3 +26,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Reef"
 include(":Reef")
+include(":appintro")
+include(":appintro")

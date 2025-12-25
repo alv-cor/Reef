@@ -1,32 +1,12 @@
 package dev.pranav.reef.ui.appusage
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -36,34 +16,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ContainedLoadingIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,6 +25,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
@@ -90,16 +47,6 @@ private fun formatTime(timeInMillis: Long): String {
     }
 }
 
-private fun Double.toTimeString(): String {
-    val hours = this.toInt()
-    val minutes = ((this - hours) * 60).toInt()
-    return if (hours > 0) {
-        "${hours}h" + if (minutes > 0) " ${minutes}m" else ""
-    } else {
-        if (minutes > 0) "${minutes}m" else "0"
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppUsageScreen(
@@ -113,7 +60,6 @@ fun AppUsageScreen(
     val isLoading by viewModel.isLoading
     val range = viewModel.selectedRange
     val isShowingAllApps by viewModel.isShowingAllApps
-    val selectedDayTimestamp by viewModel.selectedDayTimestamp
     val selectedDayIndex by viewModel.selectedDayIndex
     val weekOffset by viewModel.weekOffset
     val canGoPrevious by viewModel.canGoPrevious
@@ -124,18 +70,17 @@ fun AppUsageScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeTopAppBar(
+            LargeFlexibleTopAppBar(
                 title = {
                     Column {
                         Text(
                             "App Usage",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.SemiBold
+                            style = MaterialTheme.typography.headlineMedium
                         )
                         AnimatedVisibility(!isLoading) {
                             val count = appUsageStats.size
                             Text(
-                                "${count} app${if (count == 1) "" else "s"} tracked",
+                                "$count app${if (count == 1) "" else "s"} tracked",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -194,14 +139,12 @@ fun AppUsageScreen(
                         .fillMaxSize()
                         .padding(paddingValues),
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     item {
-                        RangeChips(
-                            range, selectedDayTimestamp,
-                            onRangeChange = { viewModel.setRange(it) },
-                            onClearSelection = { viewModel.clearDaySelection() }
-                        )
+                        RangeButtonGroup(range) {
+                            viewModel.setRange(it)
+                        }
                     }
 
                     item {
@@ -260,39 +203,42 @@ fun AppUsageScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun RangeChips(
-    range: UsageRange,
-    selectedDayTimestamp: Long?,
-    onRangeChange: (UsageRange) -> Unit,
-    onClearSelection: () -> Unit
+fun RangeButtonGroup(
+    selectedRange: UsageRange,
+    onSelectionChange: (UsageRange) -> Unit
 ) {
-    Row(
+    val options = listOf("Today", "7 Days")
+
+    val selectedIndex = if (selectedRange == UsageRange.TODAY) 0 else 1
+
+    FlowRow(
         Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 8.dp)
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(
-            "Range",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        FilterChip(
-            selected = range == UsageRange.TODAY && selectedDayTimestamp == null,
-            onClick = { onClearSelection(); onRangeChange(UsageRange.TODAY) },
-            label = { Text("Today") },
-            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer)
-        )
-        FilterChip(
-            selected = range == UsageRange.LAST_7_DAYS && selectedDayTimestamp == null,
-            onClick = { onClearSelection(); onRangeChange(UsageRange.LAST_7_DAYS) },
-            label = { Text("7 days") },
-            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer)
-        )
-        if (selectedDayTimestamp != null) {
-            FilledTonalButton(onClick = onClearSelection) { Text("Clear") }
+        options.forEachIndexed { index, label ->
+            ToggleButton(
+                checked = selectedIndex == index,
+                onCheckedChange = {
+                    if (selectedIndex != index) {
+                        onSelectionChange(if (index == 0) UsageRange.TODAY else UsageRange.LAST_7_DAYS)
+                    }
+                },
+                shapes = when (index) {
+                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { role = Role.RadioButton },
+            ) {
+                Text(label)
+            }
         }
     }
 }
@@ -315,7 +261,6 @@ private fun HeroHeader(
 
     LaunchedEffect(weeklyData) {
         modelProducer.runTransaction {
-            // Convert hours to minutes for better precision in the chart
             columnSeries { series(weeklyData.map { (it.totalUsageHours * 60).toLong() }) }
         }
     }
@@ -358,7 +303,6 @@ private fun HeroHeader(
                 modelProducer,
                 Modifier.padding(horizontal = 16.dp),
                 yValueFormatter = CartesianValueFormatter { _, value, _ ->
-                    // Value is now in minutes, convert to time string
                     val totalMinutes = value.toInt()
                     val hours = totalMinutes / 60
                     val minutes = totalMinutes % 60
@@ -529,8 +473,10 @@ private fun UsageIconRing(icon: androidx.compose.ui.graphics.ImageBitmap, progre
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
             strokeWidth = 3.dp
         )
-        Image(icon, "App icon", Modifier
-            .size(46.dp)
-            .clip(CircleShape))
+        Image(
+            icon, "App icon", Modifier
+                .size(46.dp)
+                .clip(CircleShape)
+        )
     }
 }

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Reef</string>
+    <string name="app_name" translatable="false">Reef</string>
     <string name="accessibility_service_name">Reef Service</string>
     <string name="app_description">Reef is an open source productivity app designed to help you reduce your screen time and improve your productivity.</string>
     <string name="accessibility_service">Accessibility Service</string>
@@ -69,4 +69,8 @@
     <string name="create_routine_text">Create your first routine to automate app limits based on your schedule</string>
     <string name="create_routine">Create Routine</string>
     <string name="about">About</string>
+    <string name="skip">Skip</string>
+    <string name="back">Back</string>
+    <string name="next">Next</string>
+    <string name="get_started">Get Started</string>
 </resources>

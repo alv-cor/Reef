@@ -17,7 +17,11 @@ object RoutineExecutor {
         Log.d(TAG, "Activating routine: ${routine.name}")
 
         val limitsMap = routine.limits.associate { it.packageName to it.limitMinutes }
-        RoutineLimits.setRoutineLimits(limitsMap, routine.id)
+
+        // Calculate the correct start time for this session
+        val startTime = RoutineScheduleCalculator.getRoutineStartTime(routine)
+
+        RoutineLimits.setRoutineLimits(limitsMap, routine.id, startTime)
 
         NotificationHelper.showRoutineActivatedNotification(context, routine)
     }
@@ -30,4 +34,3 @@ object RoutineExecutor {
         NotificationHelper.showRoutineDeactivatedNotification(context, routine)
     }
 }
-

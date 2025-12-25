@@ -2,23 +2,9 @@ package dev.pranav.reef.ui.about
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -29,36 +15,19 @@ import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.surfaceColorAtElevation
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import dev.pranav.reef.BuildConfig
 import dev.pranav.reef.ui.icons.Discord
 
@@ -106,7 +75,6 @@ fun AboutScreen(
 
             AppInfoCard()
 
-
             SupportCard()
 
             LinksSection()
@@ -128,6 +96,7 @@ fun AboutScreenPreview() {
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppInfoCard() {
     Column(
@@ -136,16 +105,15 @@ fun AppInfoCard() {
     ) {
         Text(
             text = "Reef",
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            style = MaterialTheme.typography.displayMediumEmphasized,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontFamily = FontFamily.Cursive
         )
 
         Text(
             text = "Version " + BuildConfig.VERSION_NAME,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
-            fontWeight = FontWeight.Medium
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -262,14 +230,14 @@ fun SupportCard() {
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.tertiary),
+                    .background(MaterialTheme.colorScheme.error),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Favorite,
                     contentDescription = null,
                     modifier = Modifier.size(28.dp),
-                    tint = MaterialTheme.colorScheme.onTertiary
+                    tint = MaterialTheme.colorScheme.onError
                 )
             }
 
@@ -297,20 +265,21 @@ fun SupportCard() {
                 onClick = {
                     val intent = Intent(
                         Intent.ACTION_VIEW,
-                        Uri.parse("https://PranavPurwar.github.io/donate.html")
+                        "https://PranavPurwar.github.io/donate.html".toUri()
                     )
                     context.startActivity(intent)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    containerColor = MaterialTheme.colorScheme.errorContainer
                 ),
                 shapes = ButtonDefaults.shapes()
             ) {
                 Icon(
                     Icons.Default.Favorite,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp)
+                    contentDescription = "Donate",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.error
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
@@ -326,7 +295,7 @@ fun SupportCard() {
 fun LinksSection() {
     val context = LocalContext.current
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = "Links",
             style = MaterialTheme.typography.titleMedium,
@@ -401,10 +370,9 @@ fun LinkCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    OutlinedButton(
+    FilledTonalButton(
         modifier = modifier,
         onClick = onClick,
-        colors = ButtonDefaults.outlinedButtonColors(),
         shapes = ButtonDefaults.shapes()
     ) {
         Row(

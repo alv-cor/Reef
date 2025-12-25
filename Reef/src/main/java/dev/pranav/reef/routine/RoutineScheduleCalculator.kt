@@ -14,28 +14,60 @@ object RoutineScheduleCalculator {
      * Checks if a routine should be active at the current moment.
      */
     fun isRoutineActiveNow(routine: Routine): Boolean {
+        return getRoutineStartTime(routine) != null
+    }
+
+    /**
+     * Returns the start time of the current active session for the routine.
+     * Returns null if the routine is not currently active.
+     */
+    fun getRoutineStartTime(routine: Routine): Long? {
         val now = LocalDateTime.now()
         val schedule = routine.schedule
 
-        val startTime = schedule.time ?: return false
-        val endTime = schedule.endTime ?: return false
+        if (schedule.type == RoutineSchedule.ScheduleType.MANUAL) return null
 
-        val todayStart = now.withHour(startTime.hour).withMinute(startTime.minute).withSecond(0)
-        val todayEnd = now.withHour(endTime.hour).withMinute(endTime.minute).withSecond(0)
+        val startTime = schedule.time ?: return null
+        val endTime = schedule.endTime ?: return null
 
-        return when (schedule.type) {
-            RoutineSchedule.ScheduleType.DAILY -> {
-                now.isAfter(todayStart) && now.isBefore(todayEnd)
+        // Check potential start times: Today and Yesterday
+        val candidates = listOf(
+            now.withHour(startTime.hour).withMinute(startTime.minute).withSecond(0).withNano(0),
+            now.minusDays(1).withHour(startTime.hour).withMinute(startTime.minute).withSecond(0)
+                .withNano(0)
+        )
+
+        for (startCandidate in candidates) {
+            // Calculate end time for this candidate
+            // If endTime < startTime, it's an overnight routine, so it ends the next day relative to startCandidate
+            val endCandidate = if (endTime.isBefore(startTime)) {
+                startCandidate.plusDays(1).withHour(endTime.hour).withMinute(endTime.minute)
+                    .withSecond(0).withNano(0)
+            } else {
+                startCandidate.withHour(endTime.hour).withMinute(endTime.minute).withSecond(0)
+                    .withNano(0)
             }
 
-            RoutineSchedule.ScheduleType.WEEKLY -> {
-                val currentDayOfWeek = now.dayOfWeek
-                val isCorrectDay = schedule.daysOfWeek.contains(currentDayOfWeek)
-                isCorrectDay && now.isAfter(todayStart) && now.isBefore(todayEnd)
-            }
+            // Check if now is within the window [start, end)
+            if ((now.isEqual(startCandidate) || now.isAfter(startCandidate)) && now.isBefore(
+                    endCandidate
+                )
+            ) {
 
-            RoutineSchedule.ScheduleType.MANUAL -> false
+                // For Weekly, check if the start day is enabled
+                if (schedule.type == RoutineSchedule.ScheduleType.WEEKLY) {
+                    if (schedule.daysOfWeek.contains(startCandidate.dayOfWeek)) {
+                        return startCandidate.atZone(ZoneId.systemDefault()).toInstant()
+                            .toEpochMilli()
+                    }
+                } else {
+                    // Daily
+                    return startCandidate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                }
+            }
         }
+
+        return null
     }
 
     /**
@@ -49,11 +81,22 @@ object RoutineScheduleCalculator {
 
         return when (schedule.type) {
             RoutineSchedule.ScheduleType.DAILY -> calculateDailyTriggerTime(now, time)
-            RoutineSchedule.ScheduleType.WEEKLY -> calculateWeeklyTriggerTime(
-                now,
-                time,
-                schedule.daysOfWeek
-            )
+            RoutineSchedule.ScheduleType.WEEKLY -> {
+                var targetDays = schedule.daysOfWeek
+                // If we are looking for end time, and it's overnight, shift target days by 1
+                if (!useStartTime && schedule.time != null && schedule.endTime != null && schedule.endTime!!.isBefore(
+                        schedule.time!!
+                    )
+                ) {
+                    targetDays = targetDays.map { it.plus(1) }.toSet()
+                }
+
+                calculateWeeklyTriggerTime(
+                    now,
+                    time,
+                    targetDays
+                )
+            }
 
             RoutineSchedule.ScheduleType.MANUAL -> null
         }
@@ -114,4 +157,3 @@ object RoutineScheduleCalculator {
         return durationMinutes * 60 * 1000L
     }
 }
-

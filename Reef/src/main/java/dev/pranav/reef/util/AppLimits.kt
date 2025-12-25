@@ -1,215 +1,70 @@
 package dev.pranav.reef.util
 
-import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
+
+private const val PREF_LIMITS = "app_limits"
 
 object AppLimits {
-    private lateinit var sharedPreferences: SharedPreferences
-    private val appLimits = mutableMapOf<String, Long>()
-    private lateinit var usageStatsManager: UsageStatsManager
-    
-    // Track when reminders were sent to avoid duplicate notifications
-    private val reminderSentMap = mutableMapOf<String, Long>()
-    private val gracePeriodStartMap = mutableMapOf<String, Long>()
 
-    fun setLimit(packageName: String, limit: Int) {
-        // limit is in minutes, convert to milliseconds
-        appLimits[packageName] = limit * 60 * 1000L
-    }
+    private lateinit var prefs: SharedPreferences
+    private val limits = mutableMapOf<String, Long>()
 
-    fun getLimit(packageName: String): Long {
-        return appLimits[packageName] ?: 0L
-    }
+    private val reminderSent = mutableMapOf<String, Long>()
 
-    fun removeLimit(packageName: String) {
-        appLimits.remove(packageName)
-    }
-
-    fun clearLimits() {
-        appLimits.clear()
-    }
-
-    fun getLimits(): Map<String, Long> {
-        return appLimits.toMap()
-    }
-
-    fun hasLimit(packageName: String): Boolean {
-        return appLimits.containsKey(packageName)
-    }
-
-    fun getUsageTime(packageName: String, usageStatsManager: UsageStatsManager): Long {
-        val endTime = System.currentTimeMillis()
-        val startTime = ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault())
-            .toLocalDate()
-            .atStartOfDay(ZoneOffset.systemDefault())
-            .toInstant()
-            .toEpochMilli()
-
-        return queryAppUsageEvents(packageName, usageStatsManager, startTime, endTime)
-    }
-
-    private fun queryAppUsageEvents(
-        packageName: String,
-        usageStatsManager: UsageStatsManager,
-        start: Long,
-        end: Long
-    ): Long {
-        val events = usageStatsManager.queryEvents(start, end)
-        var totalUsage = 0L
-        var lastResumeTime: Long? = null
-        val event = android.app.usage.UsageEvents.Event()
-
-        while (events.hasNextEvent()) {
-            events.getNextEvent(event)
-
-            if (event.packageName == packageName) {
-                when (event.eventType) {
-                    android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED -> {
-                        lastResumeTime = event.timeStamp
-                    }
-
-                    android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED,
-                    android.app.usage.UsageEvents.Event.ACTIVITY_STOPPED -> {
-                        val startTime = lastResumeTime
-                        if (startTime != null) {
-                            val duration = event.timeStamp - startTime
-                            totalUsage += duration
-                            lastResumeTime = null
-                        }
-                    }
-                }
-            }
-        }
-
-        lastResumeTime?.let {
-            totalUsage += (end - it)
-        }
-
-        return totalUsage
-    }
-
-    fun getRawUsageStats(usageStatsManager: UsageStatsManager): List<UsageStats> {
-        val endTime = System.currentTimeMillis()
-        val startTime = ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault())
-            .toLocalDate()
-            .atStartOfDay(ZoneOffset.systemDefault())
-            .toInstant()
-            .toEpochMilli()
-
-        return usageStatsManager.queryUsageStats(
-            UsageStatsManager.INTERVAL_DAILY,
-            startTime,
-            endTime
-        )
-    }
-
-    fun getUsageStats(usageStatsManager: UsageStatsManager): List<AppUsageStats> {
-        val endTime = System.currentTimeMillis()
-        val startTime = ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault())
-            .toLocalDate()
-            .atStartOfDay(ZoneOffset.systemDefault())
-            .toInstant()
-            .toEpochMilli()
-
-        return usageStatsManager.queryUsageStats(
-            UsageStatsManager.INTERVAL_DAILY,
-            startTime,
-            endTime
-        ).map { AppUsageStats(it.packageName, it.totalTimeInForeground) }
-            .groupBy { it.packageName }
-            .map { (_, statsList) ->
-                statsList.reduce { acc, stats ->
-                    acc.apply { totalTimeInForeground += stats.totalTimeInForeground }
-                }
-            }.sortedByDescending { it.totalTimeInForeground }
-    }
-
-    data class AppUsageStats(val packageName: String, var totalTimeInForeground: Long)
-
-    fun saveLimits() {
-        sharedPreferences.edit {
-            appLimits.forEach { (packageName, limit) ->
-                putLong(packageName, limit)
-            }
+    fun init(context: Context) {
+        prefs = context.getSharedPreferences(PREF_LIMITS, Context.MODE_PRIVATE)
+        limits.clear()
+        prefs.all.forEach { (k, v) ->
+            if (v is Long) limits[k] = v
         }
     }
 
-    fun loadLimits(context: Context) {
-        usageStatsManager =
+    fun setLimit(pkg: String, minutes: Int) {
+        limits[pkg] = minutes * 60_000L
+    }
+
+    fun getLimit(pkg: String): Long = limits[pkg] ?: 0L
+
+    fun hasLimit(pkg: String): Boolean = limits.containsKey(pkg)
+
+    fun removeLimit(pkg: String) {
+        limits.remove(pkg)
+    }
+
+    fun save() {
+        check(::prefs.isInitialized)
+        prefs.edit {
+            clear()
+            limits.forEach { putLong(it.key, it.value) }
+        }
+    }
+
+    private fun startOfToday(): Long =
+        LocalDate.now()
+            .atStartOfDay(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+
+    fun getUsageMapToday(context: Context): Map<String, Long> {
+        val usm =
             context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-        sharedPreferences = context.getSharedPreferences("app_limits", Context.MODE_PRIVATE).apply {
-            all.forEach { (packageName, limit) ->
-                if (limit is Long) {
-                    appLimits[packageName as String] = limit
-                }
-            }
-        }
+
+        return UsageCalculator.calculateUsage(usm, startOfToday(), System.currentTimeMillis())
     }
-    
-    fun hasReminderBeenSent(packageName: String): Boolean {
-        val lastSent = reminderSentMap[packageName] ?: return false
-        val startOfDay = java.time.ZonedDateTime.ofInstant(
-            java.time.Instant.now(), 
-            java.time.ZoneId.systemDefault()
-        )
-            .toLocalDate()
-            .atStartOfDay(java.time.ZoneOffset.systemDefault())
-            .toInstant()
-            .toEpochMilli()
-        // Reminder is valid if sent today
-        return lastSent >= startOfDay
-    }
-    
-    fun markReminderSent(packageName: String) {
-        reminderSentMap[packageName] = System.currentTimeMillis()
-    }
-    
-    fun clearReminderSent(packageName: String) {
-        reminderSentMap.remove(packageName)
-    }
-    
-    fun isInGracePeriod(packageName: String): Boolean {
-        val graceStart = gracePeriodStartMap[packageName] ?: return false
-        val elapsed = System.currentTimeMillis() - graceStart
-        return elapsed < GRACE_PERIOD_MS
-    }
-    
-    fun startGracePeriod(packageName: String) {
-        gracePeriodStartMap[packageName] = System.currentTimeMillis()
-    }
-    
-    fun hasGracePeriodStarted(packageName: String): Boolean {
-        val graceStart = gracePeriodStartMap[packageName] ?: return false
-        val startOfDay = java.time.ZonedDateTime.ofInstant(
-            java.time.Instant.now(), 
-            java.time.ZoneId.systemDefault()
-        )
-            .toLocalDate()
-            .atStartOfDay(java.time.ZoneOffset.systemDefault())
-            .toInstant()
-            .toEpochMilli()
-        // Grace period is valid if started today
-        return graceStart >= startOfDay
-    }
-    
-    fun clearGracePeriod(packageName: String) {
-        gracePeriodStartMap.remove(packageName)
-    }
-    
-    fun getRemainingGracePeriod(packageName: String): Long {
-        val graceStart = gracePeriodStartMap[packageName] ?: return 0L
-        val elapsed = System.currentTimeMillis() - graceStart
-        val remaining = GRACE_PERIOD_MS - elapsed
-        return if (remaining > 0) remaining else 0L
+
+    fun reminderSentToday(pkg: String): Boolean =
+        reminderSent[pkg]?.let { it >= startOfToday() } ?: false
+
+    fun markReminder(pkg: String) {
+        reminderSent[pkg] = System.currentTimeMillis()
     }
 }
+
 
 object Whitelist {
     private lateinit var sharedPreferences: SharedPreferences
@@ -291,10 +146,6 @@ object Whitelist {
 
     fun unwhitelist(packageName: String) {
         sharedPreferences.edit { putBoolean(packageName, false) }
-    }
-
-    fun load(context: Context) {
-        sharedPreferences = context.getSharedPreferences("whitelist", Context.MODE_PRIVATE)
     }
 
     val allowedApps = hashSetOf(

@@ -1,19 +1,15 @@
 package dev.pranav.reef.ui.appusage
 
-import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Process
-import androidx.compose.runtime.State
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.pranav.reef.util.UsageCalculator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -21,9 +17,10 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+@Stable
 data class AppUsageStats(
     val applicationInfo: ApplicationInfo,
-    val label: String, // Optimization: Cached label
+    val label: String,
     val totalTime: Long
 )
 
@@ -41,7 +38,7 @@ class AppUsageViewModel(
     private val launcherApps: LauncherApps,
     private val packageManager: PackageManager,
     private val packageName: String
-) : ViewModel() {
+): ViewModel() {
 
     private val _appUsageStats = mutableStateOf<List<AppUsageStats>>(emptyList())
     val appUsageStats: State<List<AppUsageStats>> = _appUsageStats
@@ -59,7 +56,6 @@ class AppUsageViewModel(
     val isShowingAllApps: State<Boolean> = _isShowingAllApps
 
     private val _selectedDayTimestamp = mutableStateOf<Long?>(null)
-    val selectedDayTimestamp: State<Long?> = _selectedDayTimestamp
 
     private val _weekOffset = mutableIntStateOf(0) // Optimization: primitive state
     val weekOffset: State<Int> = _weekOffset
@@ -97,12 +93,6 @@ class AppUsageViewModel(
 
     fun showAllApps() {
         _isShowingAllApps.value = true
-    }
-
-    fun selectDay(timestamp: Long?) {
-        _selectedDayTimestamp.value = timestamp
-        _isShowingAllApps.value = false
-        filterAndSortData()
     }
 
     fun selectDayByIndex(index: Int, weeklyData: List<WeeklyUsageData>) {
@@ -146,7 +136,7 @@ class AppUsageViewModel(
                 val startTime = cal.timeInMillis
                 val endTime = System.currentTimeMillis()
 
-                val rawMap = queryAppUsageEvents(startTime, endTime)
+                val rawMap = UsageCalculator.calculateUsage(usageStatsManager, startTime, endTime)
                 allAppStats = processUsageMap(rawMap)
 
                 loadWeekData()
@@ -176,10 +166,16 @@ class AppUsageViewModel(
 
             val stats =
                 if (_selectedDayTimestamp.value != null || selectedRange == UsageRange.TODAY) {
-                    processUsageMap(queryAppUsageEvents(startTime, endTime))
-            } else {
-                allAppStats
-            }
+                    processUsageMap(
+                        UsageCalculator.calculateUsage(
+                            usageStatsManager,
+                            startTime,
+                            endTime
+                        )
+                    )
+                } else {
+                    allAppStats
+                }
 
             val sortedStats = when (selectedSort) {
                 UsageSortOrder.TIME_DESC -> stats.sortedByDescending { it.totalTime }
@@ -198,10 +194,25 @@ class AppUsageViewModel(
             .filter { it.value > 5000 && it.key != packageName }
             .mapNotNull { (pkg, totalTime) ->
                 try {
-                    launcherApps.getApplicationInfo(pkg, 0, Process.myUserHandle())?.let { info ->
+                    if (packageManager.getLaunchIntentForPackage(pkg) == null) return@mapNotNull null
+
+                    val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        packageManager.getApplicationInfo(
+                            pkg,
+                            PackageManager.ApplicationInfoFlags.of(0)
+                        )
+                    } else {
+                        packageManager.getApplicationInfo(pkg, 0)
+                    }
+                    val label = packageManager.getApplicationLabel(info).toString()
+
+                    launcherApps.getApplicationInfo(
+                        pkg,
+                        0, Process.myUserHandle()
+                    )?.let { info ->
                         AppUsageStats(
                             applicationInfo = info,
-                            label = info.loadLabel(packageManager).toString(),
+                            label = label,
                             totalTime = totalTime
                         )
                     }
@@ -249,16 +260,6 @@ class AppUsageViewModel(
         }
     }
 
-    private fun getStartOfDay(timestamp: Long): Long {
-        return Calendar.getInstance().apply {
-            timeInMillis = timestamp
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-    }
-
     private fun generateWeeklyData(): List<WeeklyUsageData> {
         val dayFormat = SimpleDateFormat("EEE", Locale.getDefault())
         val result = mutableListOf<WeeklyUsageData>()
@@ -286,7 +287,11 @@ class AppUsageViewModel(
 
             // Only query if end is after start (prevents crashes on weird DST shifts)
             val totalUsageMs = if (endMillis > startMillis) {
-                queryAppUsageEvents(startMillis, endMillis).values.sum()
+                UsageCalculator.calculateUsage(
+                    usageStatsManager,
+                    startMillis,
+                    endMillis
+                ).values.sum()
             } else 0L
 
             result.add(
@@ -326,7 +331,12 @@ class AppUsageViewModel(
                 59
             ); end.set(Calendar.SECOND, 59); end.set(Calendar.MILLISECOND, 999)
 
-                if (queryAppUsageEvents(start.timeInMillis, end.timeInMillis).values.sum() > 0) {
+                if (UsageCalculator.calculateUsage(
+                        usageStatsManager,
+                        start.timeInMillis,
+                        end.timeInMillis
+                    ).values.sum() > 0
+                ) {
                     hasData = true
                     return@repeat
                 }
@@ -335,42 +345,5 @@ class AppUsageViewModel(
 
             withContext(Dispatchers.Main) { _canGoPrevious.value = hasData }
         }
-    }
-
-    private fun queryAppUsageEvents(start: Long, end: Long): Map<String, Long> {
-        val events = usageStatsManager.queryEvents(start, end)
-        val usageMap = mutableMapOf<String, Long>()
-        val event = UsageEvents.Event()
-        val lastResumeTimes = mutableMapOf<String, Long>()
-
-        while (events.hasNextEvent()) {
-            events.getNextEvent(event)
-            val pkg = event.packageName
-
-            when (event.eventType) {
-                UsageEvents.Event.ACTIVITY_RESUMED -> {
-                    lastResumeTimes[pkg] = event.timeStamp
-                }
-
-                UsageEvents.Event.ACTIVITY_PAUSED, UsageEvents.Event.ACTIVITY_STOPPED -> {
-                    val startTime = lastResumeTimes.remove(pkg)
-                    if (startTime != null) {
-                        val duration = event.timeStamp - startTime
-                        if (duration > 0) {
-                            usageMap[pkg] = (usageMap[pkg] ?: 0L) + duration
-                        }
-                    }
-                }
-            }
-        }
-
-        lastResumeTimes.forEach { (pkg, startTime) ->
-            val duration = end - startTime
-            if (duration > 0) {
-                usageMap[pkg] = (usageMap[pkg] ?: 0L) + duration
-            }
-        }
-
-        return usageMap
     }
 }

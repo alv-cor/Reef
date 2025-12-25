@@ -6,117 +6,190 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.appbar.MaterialToolbar
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import dev.pranav.reef.ui.ReefTheme
 import dev.pranav.reef.util.PermissionStatus
 import dev.pranav.reef.util.PermissionType
 import dev.pranav.reef.util.applyDefaults
 import dev.pranav.reef.util.checkAllPermissions
 
-class PermissionsCheckActivity : AppCompatActivity() {
-
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var adapter: PermissionAdapter
+class PermissionsCheckActivity: ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         applyDefaults()
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_permissions_check)
+        enableEdgeToEdge()
 
-        val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
-        setSupportActionBar(toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        toolbar.setNavigationOnClickListener { finish() }
+        setContent {
+            ReefTheme {
+                PermissionsScreen(
+                    onBackClick = { finish() }
+                )
+            }
+        }
+    }
+}
 
-        recyclerView = findViewById(R.id.permissions_recycler_view)
-        recyclerView.layoutManager = LinearLayoutManager(this)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PermissionsScreen(onBackClick: () -> Unit) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var permissions by remember { mutableStateOf(emptyList<PermissionStatus>()) }
 
-        loadPermissions()
+    // Refresh permissions on resume
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                permissions = context.checkAllPermissions()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
-    override fun onResume() {
-        super.onResume()
-        loadPermissions()
-    }
-
-    private fun loadPermissions() {
-        val permissions = checkAllPermissions()
-        adapter = PermissionAdapter(permissions) { permission ->
-            // Open settings directly without showing dialog
-            when (permission.type) {
-                PermissionType.ACCESSIBILITY -> {
-                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                }
-
-                PermissionType.USAGE_STATS -> {
-                    startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-                }
-
-                PermissionType.NOTIFICATION -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        ActivityCompat.requestPermissions(
-                            this,
-                            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                            100
-                        )
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Required Permissions") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 }
+            )
+        }
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Text(
+                    text = "To ensure Reef works correctly, please grant the following permissions.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
 
-                PermissionType.BATTERY_OPTIMIZATION -> {
-                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                    intent.data = Uri.parse("package:$packageName")
-                    startActivity(intent)
-                }
+            items(permissions) { permission ->
+                PermissionItem(
+                    permission = permission,
+                    onGrantClick = {
+                        when (permission.type) {
+                            PermissionType.ACCESSIBILITY -> {
+                                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                            }
+
+                            PermissionType.USAGE_STATS -> {
+                                context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                            }
+
+                            PermissionType.NOTIFICATION -> {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    ActivityCompat.requestPermissions(
+                                        context as android.app.Activity,
+                                        arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                                        100
+                                    )
+                                }
+                            }
+
+                            PermissionType.BATTERY_OPTIMIZATION -> {
+                                val intent =
+                                    Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                                intent.data = Uri.parse("package:${context.packageName}")
+                                context.startActivity(intent)
+                            }
+                        }
+                    }
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
-        recyclerView.adapter = adapter
     }
+}
 
-    private class PermissionAdapter(
-        private val permissions: List<PermissionStatus>,
-        private val onGrantClick: (PermissionStatus) -> Unit
-    ) : RecyclerView.Adapter<PermissionAdapter.ViewHolder>() {
+@Composable
+fun PermissionItem(
+    permission: PermissionStatus,
+    onGrantClick: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = permission.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
 
-        class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-            val title: TextView = view.findViewById(R.id.permission_title)
-            val description: TextView = view.findViewById(R.id.permission_description)
-            val status: TextView = view.findViewById(R.id.permission_status)
-            val grantButton: Button = view.findViewById(R.id.grant_button)
-        }
+                if (permission.isGranted) {
+                    Icon(
+                        imageVector = Icons.Rounded.CheckCircle,
+                        contentDescription = "Granted",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_permission, parent, false)
-            return ViewHolder(view)
-        }
+            Spacer(modifier = Modifier.height(8.dp))
 
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val permission = permissions[position]
-            holder.title.text = permission.title
-            holder.description.text = permission.description
+            Text(
+                text = permission.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
-            if (permission.isGranted) {
-                holder.status.text = "Granted"
-                holder.status.setTextColor(0xFF4CAF50.toInt())
-                holder.grantButton.visibility = View.GONE
-            } else {
-                holder.status.text = "Not Granted"
-                holder.status.setTextColor(0xFFF44336.toInt())
-                holder.grantButton.visibility = View.VISIBLE
-                holder.grantButton.setOnClickListener {
-                    onGrantClick(permission)
+            if (!permission.isGranted) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = onGrantClick,
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Grant")
                 }
             }
         }
-
-        override fun getItemCount() = permissions.size
     }
 }

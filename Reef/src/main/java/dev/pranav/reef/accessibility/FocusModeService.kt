@@ -15,12 +15,13 @@ import androidx.core.content.edit
 import dev.pranav.reef.R
 import dev.pranav.reef.TimerActivity
 import dev.pranav.reef.util.CHANNEL_ID
+import dev.pranav.reef.util.isPrefsInitialized
 import dev.pranav.reef.util.prefs
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 @SuppressLint("MissingPermission")
-class FocusModeService : Service() {
+class FocusModeService: Service() {
 
     companion object {
         private const val NOTIFICATION_ID = 1
@@ -56,6 +57,14 @@ class FocusModeService : Service() {
             }
 
             else -> {
+                if (!isPrefsInitialized) {
+                    prefs = getSharedPreferences("prefs", MODE_PRIVATE)
+                }
+
+                prefs.edit {
+                    putBoolean("focus_mode", true)
+                }
+
                 val focusTimeMillis = prefs.getLong("focus_time", TimeUnit.MINUTES.toMillis(10))
                 isStrictMode = prefs.getBoolean("strict_mode", false)
                 currentMillisRemaining = focusTimeMillis
@@ -90,7 +99,7 @@ class FocusModeService : Service() {
     private fun startCountdown(timeMillis: Long) {
         countDownTimer?.cancel()
 
-        countDownTimer = object : CountDownTimer(timeMillis, 1000) {
+        countDownTimer = object: CountDownTimer(timeMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
                 if (!isPaused) {
                     currentMillisRemaining = millisUntilFinished

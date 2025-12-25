@@ -6,11 +6,9 @@ import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dev.pranav.reef.PermissionsCheckActivity
@@ -142,52 +140,11 @@ fun Context.checkAllPermissions(): List<PermissionStatus> {
     return permissions
 }
 
-fun Activity.showPermissionDialog(permission: PermissionStatus, onComplete: () -> Unit = {}) {
-    MaterialAlertDialogBuilder(this)
-        .setTitle(permission.title)
-        .setMessage(permission.description)
-        .setPositiveButton("Grant") { _, _ ->
-            when (permission.type) {
-                PermissionType.ACCESSIBILITY -> {
-                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                }
-
-                PermissionType.USAGE_STATS -> {
-                    startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-                }
-
-                PermissionType.NOTIFICATION -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        ActivityCompat.requestPermissions(
-                            this,
-                            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                            100
-                        )
-                    }
-                }
-
-                PermissionType.BATTERY_OPTIMIZATION -> {
-                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
-                    intent.data = Uri.parse("package:$packageName")
-                    startActivity(intent)
-                }
-            }
-            onComplete()
-        }
-        .setNegativeButton("Later") { dialog, _ ->
-            dialog.dismiss()
-            onComplete()
-        }
-        .setCancelable(false)
-        .show()
-}
-
 fun Activity.checkAndRequestMissingPermissions() {
     val allPermissions = checkAllPermissions()
     val missingPermissions = allPermissions.filter { !it.isGranted }
 
     if (missingPermissions.isNotEmpty()) {
-        // Redirect directly to permissions check screen instead of showing dialogs
         startActivity(Intent(this, PermissionsCheckActivity::class.java))
     }
 }

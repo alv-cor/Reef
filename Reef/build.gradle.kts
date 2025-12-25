@@ -60,7 +60,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.gson)
 
-    implementation(libs.appintro)
+    implementation(project(":appintro"))
 
     // Compose BOM
     implementation(platform(libs.androidx.compose.bom))

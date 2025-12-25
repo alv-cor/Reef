@@ -17,15 +17,10 @@ import com.google.android.material.transition.platform.MaterialSharedAxis
 import dev.pranav.reef.accessibility.FocusModeService
 import dev.pranav.reef.accessibility.getFormattedTime
 import dev.pranav.reef.databinding.ActivityMainBinding
-import dev.pranav.reef.intro.PurelyIntro
-import dev.pranav.reef.util.Whitelist
-import dev.pranav.reef.util.applyDefaults
-import dev.pranav.reef.util.checkAndRequestMissingPermissions
-import dev.pranav.reef.util.isAccessibilityServiceEnabledForBlocker
-import dev.pranav.reef.util.prefs
-import dev.pranav.reef.util.showAccessibilityDialog
+import dev.pranav.reef.intro.AppIntroActivity
+import dev.pranav.reef.util.*
 
-class MainActivity : AppCompatActivity() {
+class MainActivity: AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var pendingFocusModeStart = false
     private var hasCheckedPermissions = false
@@ -72,7 +67,7 @@ class MainActivity : AppCompatActivity() {
         addExceptions()
 
         if (prefs.getBoolean("first_run", true)) {
-            startActivity(Intent(this, PurelyIntro::class.java))
+            startActivity(Intent(this, AppIntroActivity::class.java))
         } else {
             if (FocusModeService.isRunning) {
                 Log.d("MainActivity", "Starting timer activity")

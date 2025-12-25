@@ -1,154 +1,86 @@
 package dev.pranav.reef
 
-import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherApps
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.ViewGroup
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
-import androidx.core.view.isVisible
-import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
-import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.transition.platform.MaterialSharedAxis
-import dev.pranav.reef.databinding.ActivityWhitelistBinding
-import dev.pranav.reef.databinding.AppItemBinding
+import android.os.Process
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.asImageBitmap
+import dev.pranav.reef.ui.ReefTheme
+import dev.pranav.reef.ui.whitelist.AllowedAppsState
+import dev.pranav.reef.ui.whitelist.WhitelistScreen
+import dev.pranav.reef.ui.whitelist.WhitelistedApp
+import dev.pranav.reef.ui.whitelist.toBitmap
 import dev.pranav.reef.util.Whitelist
 import dev.pranav.reef.util.applyDefaults
-import dev.pranav.reef.util.applyWindowInsets
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-data class WhitelistedApp(
-    val appInfo: ApplicationInfo,
-    val isWhitelisted: Boolean
-)
-
-class WhitelistActivity : AppCompatActivity() {
-    private lateinit var binding: ActivityWhitelistBinding
-    private val adapter = WhitelistAdapter { app -> onAppItemToggled(app) }
+class WhitelistActivity: ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         applyDefaults()
-
-        window.enterTransition = MaterialSharedAxis(MaterialSharedAxis.Z, true)
-        window.returnTransition = MaterialSharedAxis(MaterialSharedAxis.Z, false)
-
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        binding = ActivityWhitelistBinding.inflate(layoutInflater)
-        setContentView(binding.root)
 
-        applyWindowInsets(binding.root)
+        val launcherApps = getSystemService(LAUNCHER_APPS_SERVICE) as LauncherApps
+        val packageManager = packageManager
+        val currentPackageName = packageName
 
-        binding.toolbar.setNavigationOnClickListener {
-            onBackPressedDispatcher.onBackPressed()
-        }
+        setContent {
+            ReefTheme {
+                var uiState by remember { mutableStateOf<AllowedAppsState>(AllowedAppsState.Loading) }
 
-        setupRecyclerView()
-        loadInstalledApps()
-    }
-
-    private fun setupRecyclerView() {
-        binding.appsRecyclerView.adapter = adapter
-    }
-
-    private fun loadInstalledApps() {
-        binding.loadingIndicator.isVisible = true
-        lifecycleScope.launch(Dispatchers.IO) {
-            val launcherApps = getSystemService(LAUNCHER_APPS_SERVICE) as LauncherApps
-            val apps = launcherApps.getActivityList(null, android.os.Process.myUserHandle())
-                .asSequence()
-                .map { it.applicationInfo }
-                .filter { it.packageName != packageName }
-                .sortedBy { it.loadLabel(packageManager).toString().lowercase() }
-                .map { appInfo ->
-                    WhitelistedApp(
-                        appInfo = appInfo,
-                        isWhitelisted = Whitelist.isWhitelisted(appInfo.packageName)
-                    )
+                LaunchedEffect(Unit) {
+                    withContext(Dispatchers.IO) {
+                        val apps = launcherApps.getActivityList(null, Process.myUserHandle())
+                            .asSequence()
+                            .distinctBy { it.applicationInfo.packageName }
+                            .map { it.applicationInfo }
+                            .filter { it.packageName != currentPackageName }
+                            .map { appInfo ->
+                                WhitelistedApp(
+                                    packageName = appInfo.packageName,
+                                    label = appInfo.loadLabel(packageManager).toString(),
+                                    icon = appInfo.loadIcon(packageManager).toBitmap()
+                                        .asImageBitmap(),
+                                    isWhitelisted = Whitelist.isWhitelisted(appInfo.packageName)
+                                )
+                            }
+                            .sortedBy { it.label }
+                            .toList()
+                        uiState = AllowedAppsState.Success(apps)
+                    }
                 }
-                .toList()
 
-            withContext(Dispatchers.Main) {
-                binding.loadingIndicator.isVisible = false
-                adapter.submitList(apps)
+                fun toggleWhitelist(app: WhitelistedApp) {
+                    if (app.isWhitelisted) {
+                        Whitelist.unwhitelist(app.packageName)
+                    } else {
+                        Whitelist.whitelist(app.packageName)
+                    }
+
+                    val currentState = uiState
+                    if (currentState is AllowedAppsState.Success) {
+                        val updatedList = currentState.apps.map {
+                            if (it.packageName == app.packageName) {
+                                it.copy(isWhitelisted = !it.isWhitelisted)
+                            } else {
+                                it
+                            }
+                        }
+                        uiState = AllowedAppsState.Success(updatedList)
+                    }
+                }
+
+                WhitelistScreen(
+                    uiState = uiState,
+                    onToggle = ::toggleWhitelist,
+                    onBackClick = { onBackPressedDispatcher.onBackPressed() }
+                )
             }
         }
-    }
-
-    private fun onAppItemToggled(toggledApp: WhitelistedApp) {
-        if (toggledApp.isWhitelisted) {
-            Whitelist.unwhitelist(toggledApp.appInfo.packageName)
-        } else {
-            Whitelist.whitelist(toggledApp.appInfo.packageName)
-        }
-
-        val newList = adapter.currentList.map { app ->
-            if (app.appInfo.packageName == toggledApp.appInfo.packageName) {
-                app.copy(isWhitelisted = !app.isWhitelisted)
-            } else {
-                app
-            }
-        }
-        adapter.submitList(newList)
-    }
-}
-
-
-class WhitelistAdapter(private val onToggle: (WhitelistedApp) -> Unit) :
-    ListAdapter<WhitelistedApp, WhitelistViewHolder>(WhitelistDiffCallback()) {
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): WhitelistViewHolder {
-        val binding = AppItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return WhitelistViewHolder(binding, onToggle)
-    }
-
-    override fun onBindViewHolder(holder: WhitelistViewHolder, position: Int) {
-        holder.bind(getItem(position))
-
-        val context = holder.itemView.context
-
-        val background = when {
-            itemCount == 1 -> ContextCompat.getDrawable(context, R.drawable.list_item_single)
-
-            position == 0 -> ContextCompat.getDrawable(context, R.drawable.list_item_top)
-
-            position == itemCount - 1 -> ContextCompat.getDrawable(
-                context,
-                R.drawable.list_item_bottom
-            )
-
-            else -> ContextCompat.getDrawable(context, R.drawable.list_item_middle)
-        }
-        holder.itemView.background = background
-    }
-}
-
-class WhitelistViewHolder(
-    private val binding: AppItemBinding,
-    private val onToggle: (WhitelistedApp) -> Unit
-) : RecyclerView.ViewHolder(binding.root) {
-
-    fun bind(app: WhitelistedApp) {
-        binding.appIcon.setImageDrawable(itemView.context.packageManager.getApplicationIcon(app.appInfo))
-        binding.appName.text = itemView.context.packageManager.getApplicationLabel(app.appInfo)
-        binding.checkbox.isChecked = app.isWhitelisted
-
-        binding.root.setOnClickListener {
-            onToggle(app)
-        }
-    }
-}
-
-class WhitelistDiffCallback : DiffUtil.ItemCallback<WhitelistedApp>() {
-    override fun areItemsTheSame(oldItem: WhitelistedApp, newItem: WhitelistedApp): Boolean {
-        return oldItem.appInfo.packageName == newItem.appInfo.packageName
-    }
-
-    override fun areContentsTheSame(oldItem: WhitelistedApp, newItem: WhitelistedApp): Boolean {
-        return oldItem.isWhitelisted == newItem.isWhitelisted
     }
 }
