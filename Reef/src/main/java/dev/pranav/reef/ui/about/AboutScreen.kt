@@ -13,7 +13,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -346,19 +345,6 @@ fun LinksSection() {
                 }
             )
         }
-
-        LinkCard(
-            title = "Other Apps",
-            icon = Icons.Outlined.Language,
-            modifier = Modifier.fillMaxWidth(),
-            onClick = {
-                val intent = Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse("https://github.com/PranavPurwar?tab=repositories")
-                )
-                context.startActivity(intent)
-            }
-        )
     }
 }
 

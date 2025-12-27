@@ -14,53 +14,20 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.LockOpen
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Remove
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.FilledTonalIconToggleButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.IconToggleButtonShapes
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.twotone.PlayArrow
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -72,15 +39,27 @@ import dev.pranav.reef.ui.ReefTheme
 import dev.pranav.reef.util.AndroidUtilities
 import dev.pranav.reef.util.prefs
 
-class TimerActivity : ComponentActivity() {
+sealed interface TimerConfig {
+    data class Simple(val minutes: Int, val strictMode: Boolean): TimerConfig
+    data class Pomodoro(
+        val focusMinutes: Int,
+        val shortBreakMinutes: Int,
+        val longBreakMinutes: Int,
+        val cycles: Int,
+        val strictMode: Boolean
+    ): TimerConfig
+}
 
-    private val timerReceiver = object : BroadcastReceiver() {
+class TimerActivity: ComponentActivity() {
+
+    private val timerReceiver = object: BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val left = intent.getStringExtra(FocusModeService.EXTRA_TIME_LEFT) ?: "00:00"
             currentTimeLeft = left
             isPaused = FocusModeService.isPaused
+            currentTimerState = intent.getStringExtra(FocusModeService.EXTRA_TIMER_STATE) ?: "FOCUS"
 
-            if (left == "00:00") {
+            if (left == "00:00" && !prefs.getBoolean("pomodoro_mode", false)) {
                 isTimerRunning = false
                 isPaused = false
                 val androidUtilities = AndroidUtilities()
@@ -90,6 +69,7 @@ class TimerActivity : ComponentActivity() {
     }
 
     private var currentTimeLeft by mutableStateOf("00:00")
+    private var currentTimerState by mutableStateOf("FOCUS")
     private var isTimerRunning by mutableStateOf(false)
     private var isPaused by mutableStateOf(false)
     private var isStrictMode by mutableStateOf(false)
@@ -117,72 +97,98 @@ class TimerActivity : ComponentActivity() {
             isPaused = FocusModeService.isPaused
             isStrictMode = prefs.getBoolean("strict_mode", false)
             currentTimeLeft = intent.getStringExtra(FocusModeService.EXTRA_TIME_LEFT) ?: "00:00"
+            currentTimerState = prefs.getString("pomodoro_state", "FOCUS") ?: "FOCUS"
         } else if (intent.hasExtra(FocusModeService.EXTRA_TIME_LEFT)) {
             currentTimeLeft = intent.getStringExtra(FocusModeService.EXTRA_TIME_LEFT) ?: "00:00"
             isTimerRunning = true
             isStrictMode = prefs.getBoolean("strict_mode", false)
+            currentTimerState = prefs.getString("pomodoro_state", "FOCUS") ?: "FOCUS"
         }
 
         setContent {
             ReefTheme {
-                TimerScreen(
+                FocusTimerScreen(
                     isTimerRunning = isTimerRunning,
                     isPaused = isPaused,
                     currentTimeLeft = currentTimeLeft,
+                    currentTimerState = currentTimerState,
                     isStrictMode = isStrictMode,
-                    onStartTimer = { minutes, strictMode ->
-                        startFocusMode(minutes, strictMode)
-                    },
-                    onPauseTimer = {
-                        pauseFocusMode()
-                    },
-                    onResumeTimer = {
-                        resumeFocusMode()
-                    },
-                    onBackPressed = {
-                        handleBackPress()
-                    }
+                    onStartTimer = { config -> startFocusMode(config) },
+                    onPauseTimer = { pauseFocusMode() },
+                    onResumeTimer = { resumeFocusMode() },
+                    onCancelTimer = { cancelFocusMode() },
+                    onBackPressed = { handleBackPress() }
                 )
             }
         }
     }
 
-    private fun startFocusMode(minutes: Int, strictMode: Boolean) {
-        prefs.edit {
-            putBoolean("focus_mode", true)
-            putLong("focus_time", minutes * 60 * 1000L)
-            putBoolean("strict_mode", strictMode)
+    private fun startFocusMode(config: TimerConfig) {
+        when (config) {
+            is TimerConfig.Simple -> {
+                prefs.edit {
+                    putBoolean("focus_mode", true)
+                    putBoolean("pomodoro_mode", false)
+                    putLong("focus_time", config.minutes * 60 * 1000L)
+                    putBoolean("strict_mode", config.strictMode)
+                }
+                isStrictMode = config.strictMode
+            }
+
+            is TimerConfig.Pomodoro -> {
+                prefs.edit {
+                    putBoolean("focus_mode", true)
+                    putBoolean("pomodoro_mode", true)
+                    putLong("focus_time", config.focusMinutes * 60 * 1000L)
+                    putLong("pomodoro_focus_duration", config.focusMinutes * 60 * 1000L)
+                    putLong("pomodoro_short_break_duration", config.shortBreakMinutes * 60 * 1000L)
+                    putLong("pomodoro_long_break_duration", config.longBreakMinutes * 60 * 1000L)
+                    putInt("pomodoro_cycles_before_long_break", config.cycles)
+                    putInt("pomodoro_current_cycle", 1)  // Start from cycle 1 instead of 0
+                    putString("pomodoro_state", "FOCUS")
+                    putBoolean("strict_mode", config.strictMode)
+                }
+                isStrictMode = config.strictMode
+            }
         }
 
-        val intent = Intent(this, FocusModeService::class.java)
-        startForegroundService(intent)
-
+        startForegroundService(Intent(this, FocusModeService::class.java))
         isTimerRunning = true
         isPaused = false
-        isStrictMode = strictMode
     }
 
     private fun pauseFocusMode() {
-        val intent = Intent(this, FocusModeService::class.java).apply {
+        startService(Intent(this, FocusModeService::class.java).apply {
             action = FocusModeService.ACTION_PAUSE
-        }
-        startService(intent)
+        })
         isPaused = true
     }
 
     private fun resumeFocusMode() {
-        val intent = Intent(this, FocusModeService::class.java).apply {
+        startService(Intent(this, FocusModeService::class.java).apply {
             action = FocusModeService.ACTION_RESUME
-        }
-        startService(intent)
+        })
         isPaused = false
+    }
+
+    private fun cancelFocusMode() {
+        stopService(Intent(this, FocusModeService::class.java))
+        isTimerRunning = false
+        isPaused = false
+        isStrictMode = false
+        currentTimeLeft = "00:00"
+        currentTimerState = "FOCUS"
+        prefs.edit {
+            putBoolean("focus_mode", false)
+            remove("strict_mode")
+        }
     }
 
     private fun handleBackPress() {
         if (FocusModeService.isRunning && !FocusModeService.isPaused) {
-            val intent = Intent(Intent.ACTION_MAIN)
-            intent.addCategory(Intent.CATEGORY_HOME)
-            startActivity(intent)
+            startActivity(Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+            })
         } else {
             finish()
         }
@@ -200,27 +206,31 @@ class TimerActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(
+    ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class
+)
 @Composable
-fun TimerScreen(
+fun FocusTimerScreen(
     isTimerRunning: Boolean,
     isPaused: Boolean,
     currentTimeLeft: String,
+    currentTimerState: String,
     isStrictMode: Boolean,
-    onStartTimer: (Int, Boolean) -> Unit,
+    onStartTimer: (TimerConfig) -> Unit,
     onPauseTimer: () -> Unit,
     onResumeTimer: () -> Unit,
+    onCancelTimer: () -> Unit,
     onBackPressed: () -> Unit,
 ) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
-            TopAppBar(
+            LargeFlexibleTopAppBar(
                 title = {
                     Text(
-                        "Focus Timer",
-                        style = MaterialTheme.typography.titleLarge
+                        "Focus Mode",
+                        style = MaterialTheme.typography.headlineLarge
                     )
                 },
                 navigationIcon = {
@@ -253,13 +263,17 @@ fun TimerScreen(
                 if (running) {
                     RunningTimerView(
                         timeLeft = currentTimeLeft,
+                        timerState = currentTimerState,
                         isPaused = isPaused,
                         isStrictMode = isStrictMode,
                         onPause = onPauseTimer,
-                        onResume = onResumeTimer
+                        onResume = onResumeTimer,
+                        onCancel = onCancelTimer
                     )
                 } else {
-                    TimerSetupView(onStart = onStartTimer)
+                    FocusTimerSetupView(
+                        onStart = onStartTimer
+                    )
                 }
             }
         }
@@ -269,14 +283,16 @@ fun TimerScreen(
 @Preview
 @Composable
 fun TimerScreenPreview() {
-    TimerScreen(
+    FocusTimerScreen(
         isTimerRunning = false,
         isPaused = false,
         currentTimeLeft = "25:00",
+        currentTimerState = "FOCUS",
         isStrictMode = false,
-        onStartTimer = { _, _ -> },
+        onStartTimer = { _ -> },
         onPauseTimer = {},
         onResumeTimer = {},
+        onCancelTimer = {},
         onBackPressed = {}
     )
 }
@@ -284,21 +300,85 @@ fun TimerScreenPreview() {
 @Preview
 @Composable
 fun TimerScreenRunningPreview() {
-    TimerScreen(
+    FocusTimerScreen(
         isTimerRunning = true,
         isPaused = false,
         currentTimeLeft = "24:59",
+        currentTimerState = "FOCUS",
         isStrictMode = false,
-        onStartTimer = { _, _ -> },
+        onStartTimer = { _ -> },
         onPauseTimer = {},
         onResumeTimer = {},
+        onCancelTimer = {},
         onBackPressed = {}
     )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun TimerSetupView(onStart: (Int, Boolean) -> Unit) {
+fun FocusTimerSetupView(onStart: (TimerConfig) -> Unit) {
+    var selectedMode by remember { mutableIntStateOf(0) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        FocusModeGroup(
+            selectedMode = selectedMode,
+            onSelectionChange = { selectedMode = it }
+        )
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (selectedMode == 0) {
+                SimpleFocusSetup(onStart)
+            } else {
+                PomodoroFocusSetup(onStart)
+            }
+        }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun FocusModeGroup(
+    selectedMode: Int,
+    onSelectionChange: (Int) -> Unit
+) {
+    val modes = listOf("Timer", "Pomodoro")
+
+    FlowRow(
+        Modifier
+            .padding(horizontal = 8.dp)
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        modes.forEachIndexed { index, label ->
+            ToggleButton(
+                checked = index == selectedMode,
+                onCheckedChange = {
+                    if (selectedMode != index) {
+                        onSelectionChange(index)
+                    }
+                },
+                shapes = when (index) {
+                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                    modes.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                    else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { role = Role.RadioButton },
+            ) {
+                Text(label)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun SimpleFocusSetup(onStart: (TimerConfig) -> Unit) {
     var hours by remember { mutableIntStateOf(0) }
     var minutes by remember { mutableIntStateOf(30) }
     var isStrictMode by remember { mutableStateOf(false) }
@@ -480,7 +560,7 @@ fun TimerSetupView(onStart: (Int, Boolean) -> Unit) {
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = { onStart(totalMinutes, isStrictMode) },
+            onClick = { onStart(TimerConfig.Simple(totalMinutes, isStrictMode)) },
             modifier = Modifier
                 .fillMaxWidth(),
             enabled = totalMinutes > 0,
@@ -508,60 +588,327 @@ fun TimerSetupView(onStart: (Int, Boolean) -> Unit) {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
+fun PomodoroFocusSetup(onStart: (TimerConfig) -> Unit) {
+    var focusMinutes by remember {
+        mutableIntStateOf(prefs.getInt("pomodoro_focus_minutes", 25))
+    }
+    var shortBreakMinutes by remember {
+        mutableIntStateOf(prefs.getInt("pomodoro_short_break_minutes", 5))
+    }
+    var longBreakMinutes by remember {
+        mutableIntStateOf(prefs.getInt("pomodoro_long_break_minutes", 15))
+    }
+    var cycles by remember {
+        mutableIntStateOf(prefs.getInt("pomodoro_cycles", 4))
+    }
+    var isStrictMode by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(16.dp))
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                ExpressiveCounter(
+                    modifier = Modifier.weight(1f),
+                    label = "Focus",
+                    value = focusMinutes,
+                    onValueChange = { focusMinutes = it },
+                    range = 1..120,
+                    suffix = "m"
+                )
+                ExpressiveCounter(
+                    modifier = Modifier.weight(1f),
+                    label = "Short Break",
+                    value = shortBreakMinutes,
+                    onValueChange = { shortBreakMinutes = it },
+                    range = 1..30,
+                    suffix = "m"
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                ExpressiveCounter(
+                    modifier = Modifier.weight(1f),
+                    label = "Long Break",
+                    value = longBreakMinutes,
+                    onValueChange = { longBreakMinutes = it },
+                    range = 1..60,
+                    suffix = "m"
+                )
+                ExpressiveCounter(
+                    modifier = Modifier.weight(1f),
+                    label = "Cycles",
+                    value = cycles,
+                    onValueChange = { cycles = it },
+                    range = 1..10,
+                    suffix = ""
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = if (isStrictMode) Icons.Outlined.Lock else Icons.Rounded.LockOpen,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+                Column {
+                    Text(
+                        text = if (isStrictMode) "Strict Mode" else "Flexible Mode",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = if (isStrictMode) "No pausing allowed" else "Pause & resume anytime",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Switch(
+                checked = isStrictMode,
+                onCheckedChange = { isStrictMode = it }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                onStart(
+                    TimerConfig.Pomodoro(
+                        focusMinutes,
+                        shortBreakMinutes,
+                        longBreakMinutes,
+                        cycles,
+                        isStrictMode
+                    )
+                )
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shapes = ButtonDefaults.shapes(
+                pressedShape = ButtonDefaults.pressedShape
+            ),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
+        ) {
+            Icon(
+                imageVector = Icons.TwoTone.PlayArrow,
+                contentDescription = null,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Start Pomodoro",
+                style = MaterialTheme.typography.titleLarge
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun ExpressiveCounter(
+    modifier: Modifier = Modifier,
+    label: String,
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    range: IntRange,
+    suffix: String
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        Text(
+            text = "$value$suffix",
+            style = MaterialTheme.typography.displayLarge,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilledTonalIconButton(
+                onClick = { if (value > range.first) onValueChange(value - 1) },
+                modifier = Modifier.size(40.dp),
+                shapes = IconButtonDefaults.shapes()
+            ) {
+                Icon(Icons.Rounded.Remove, "Decrease")
+            }
+            FilledTonalIconButton(
+                onClick = { if (value < range.last) onValueChange(value + 1) },
+                modifier = Modifier.size(40.dp),
+                shapes = IconButtonDefaults.shapes()
+            ) {
+                Icon(Icons.Rounded.Add, "Increase")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
 fun RunningTimerView(
     timeLeft: String,
+    timerState: String,
     isPaused: Boolean,
     isStrictMode: Boolean,
     onPause: () -> Unit,
-    onResume: () -> Unit
+    onResume: () -> Unit,
+    onCancel: () -> Unit
 ) {
+    val isPomodoroMode = prefs.getBoolean("pomodoro_mode", false)
+    val currentCycle = prefs.getInt("pomodoro_current_cycle", 0)
+    val totalCycles = prefs.getInt("pomodoro_cycles_before_long_break", 4)
+
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(bottom = 16.dp)
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
         ) {
+            // Pomodoro mode indicator
+            if (isPomodoroMode) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    AssistChip(
+                        onClick = { },
+                        label = {
+                            Text(
+                                text = "Pomodoro",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Rounded.Timer,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    )
+
+                    if (timerState == "FOCUS") {
+                        AssistChip(
+                            onClick = { },
+                            label = {
+                                Text(
+                                    text = "Cycle $currentCycle/$totalCycles",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+
+            val stateText = when (timerState) {
+                "FOCUS" -> "Focus"
+                "SHORT_BREAK" -> "Short Break"
+                "LONG_BREAK" -> "Long Break"
+                else -> "Focus"
+            }
+
+            val isBreak = timerState == "SHORT_BREAK" || timerState == "LONG_BREAK"
+
+            // State icon
+            if (isBreak) {
+                Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .padding(bottom = 8.dp),
+                    tint = MaterialTheme.colorScheme.tertiary
+                )
+            }
+
+            Text(
+                text = stateText,
+                style = MaterialTheme.typography.displayMedium,
+                color = if (isBreak) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp),
+                fontWeight = FontWeight.Bold
+            )
+
             Text(
                 text = timeLeft,
                 style = MaterialTheme.typography.displayLarge,
                 fontWeight = FontWeight.Bold,
-                fontSize = 100.sp,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Center,
+                color = if (isBreak) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface
             )
 
             if (isStrictMode) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Strict Mode",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                Text(
+                    text = "Strict Mode",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
             } else if (isPaused) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Pause,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.tertiary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        text = "Paused",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.tertiary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                Text(
+                    text = "Paused",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+            } else if (isBreak) {
+                Text(
+                    text = "Take a break, apps are unblocked",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .padding(top = 16.dp)
+                        .padding(horizontal = 32.dp)
+                )
             }
         }
 
@@ -570,18 +917,20 @@ fun RunningTimerView(
                 isPaused = isPaused,
                 onPause = onPause,
                 onResume = onResume,
+                onCancel = onCancel,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 48.dp)
+                    .fillMaxWidth(0.95f)
             )
         } else {
             Text(
                 text = "No interruptions allowed",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 48.dp)
+                    .padding(bottom = 16.dp)
             )
         }
     }
@@ -593,46 +942,62 @@ fun RunningTimerActions(
     isPaused: Boolean,
     onPause: () -> Unit,
     onResume: () -> Unit,
+    onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = modifier.padding(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        FilledTonalIconToggleButton(
+        IconToggleButton(
             checked = isPaused,
             onCheckedChange = { if (isPaused) onResume() else onPause() },
-            shapes = IconToggleButtonShapes(
-                shape = IconButtonDefaults.largeRoundShape,
-                pressedShape = IconButtonDefaults.extraLargeSelectedRoundShape,
-                checkedShape = IconButtonDefaults.extraLargeSelectedRoundShape
+            shapes = IconButtonDefaults.toggleableShapes(
+                shape = IconButtonDefaults.standardShape
+            ),
+            colors = IconButtonDefaults.filledIconToggleButtonColors(
+                MaterialTheme.colorScheme.secondaryContainer,
+                checkedContainerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
             modifier = Modifier
-                .fillMaxHeight(0.15f)
-                .fillMaxWidth(0.9f),
-            colors = IconButtonDefaults.filledTonalIconToggleButtonColors()
+                .height(68.dp)
+                .aspectRatio(0.8f)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                Icon(
-                    imageVector = if (isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
-                    contentDescription = if (isPaused) "Resume" else "Pause",
-                    modifier = Modifier
-                        .fillMaxHeight(0.6f)
-                        .aspectRatio(1f)
-                )
+            Icon(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp),
+                imageVector = if (isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
+                contentDescription = if (isPaused) "Resume" else "Pause"
+            )
+        }
 
-                Spacer(modifier = Modifier.width(16.dp))
+        Button(
+            onClick = { onCancel() },
+            modifier = Modifier
+                .weight(1f)
+                .padding(12.dp)
+                .height(84.dp),
+            shapes = ButtonDefaults.shapes(),
+        ) {
+            Text(
+                text = "Cancel",
+                style = MaterialTheme.typography.titleLargeEmphasized
+            )
+        }
 
-                Text(
-                    text = if (isPaused) "Resume" else "Pause",
-                    style = MaterialTheme.typography.displaySmallEmphasized,
-                    textAlign = TextAlign.Center
-                )
-            }
+        OutlinedButton(
+            onClick = { },
+            shapes = ButtonDefaults.shapes(
+                shape = ButtonDefaults.elevatedShape
+            ),
+            modifier = Modifier.size(60.dp)
+        ) {
+            Text(
+                text = "↻",
+                style = MaterialTheme.typography.titleMedium
+            )
         }
     }
 }
@@ -641,7 +1006,7 @@ fun RunningTimerActions(
 @Composable
 fun TimerSetupViewPreview() {
     ReefTheme {
-        TimerSetupView(onStart = { _, _ -> })
+        FocusTimerSetupView(onStart = { _ -> })
     }
 }
 
@@ -651,10 +1016,12 @@ fun RunningTimerViewPreview() {
     ReefTheme {
         RunningTimerView(
             timeLeft = "24:59",
+            timerState = "FOCUS",
             isPaused = false,
             isStrictMode = false,
             onPause = {},
-            onResume = {}
+            onResume = {},
+            onCancel = {}
         )
     }
 }
@@ -665,10 +1032,12 @@ fun RunningTimerViewPausedPreview() {
     ReefTheme {
         RunningTimerView(
             timeLeft = "24:59",
+            timerState = "FOCUS",
             isPaused = true,
             isStrictMode = false,
             onPause = {},
-            onResume = {}
+            onResume = {},
+            onCancel = {}
         )
     }
 }
@@ -679,10 +1048,12 @@ fun RunningTimerViewStrictModePreview() {
     ReefTheme {
         RunningTimerView(
             timeLeft = "24:59",
+            timerState = "FOCUS",
             isPaused = false,
             isStrictMode = true,
             onPause = {},
-            onResume = {}
+            onResume = {},
+            onCancel = {}
         )
     }
 }

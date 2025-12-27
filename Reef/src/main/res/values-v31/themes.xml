@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.Reef" parent="Theme.Material3Expressive.DynamicColors.DayNight.NoActionBar">
+        <item name="android:windowActivityTransitions">true</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">?containerColor</item>
+        <item name="android:windowSplashScreenBackground">?colorSurface</item>
+    </style>
+</resources>

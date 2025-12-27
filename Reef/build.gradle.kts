@@ -13,8 +13,8 @@ android {
         applicationId = "dev.pranav.reef"
         minSdk = 26
         targetSdk = 36
-        versionCode = 205
-        versionName = "2.0.5"
+        versionCode = 301
+        versionName = "3.0.1"
     }
 
     viewBinding.enable = true
@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.core.splashscreen)
 
     implementation(libs.vico.compose.m3)
 }

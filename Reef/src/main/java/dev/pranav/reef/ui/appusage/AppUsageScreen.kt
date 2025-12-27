@@ -75,7 +75,7 @@ fun AppUsageScreen(
                     Column {
                         Text(
                             "App Usage",
-                            style = MaterialTheme.typography.headlineMedium
+                            style = MaterialTheme.typography.headlineSmall
                         )
                         AnimatedVisibility(!isLoading) {
                             val count = appUsageStats.size

@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dev.pranav.reef.PermissionsCheckActivity
@@ -24,7 +25,11 @@ fun Activity.showAccessibilityDialog() {
             }.setNegativeButton(getString(android.R.string.cancel)) { dialog, _ ->
                 dialog.dismiss()
                 if (!isAccessibilityServiceEnabledForBlocker()) {
-                    finish()
+                    Toast.makeText(
+                        this,
+                        "You cannot use Reef without accessibility service enabled",
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             }.show()
     }

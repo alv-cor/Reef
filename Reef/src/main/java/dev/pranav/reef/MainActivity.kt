@@ -15,7 +15,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.shape.MaterialShapes
 import com.google.android.material.transition.platform.MaterialSharedAxis
 import dev.pranav.reef.accessibility.FocusModeService
-import dev.pranav.reef.accessibility.getFormattedTime
+import dev.pranav.reef.accessibility.formatTime
 import dev.pranav.reef.databinding.ActivityMainBinding
 import dev.pranav.reef.intro.AppIntroActivity
 import dev.pranav.reef.util.*
@@ -74,7 +74,7 @@ class MainActivity: AppCompatActivity() {
                 startActivity(Intent(this, TimerActivity::class.java).apply {
                     putExtra(
                         FocusModeService.EXTRA_TIME_LEFT,
-                        getFormattedTime(prefs.getLong("focus_time", 10 * 60 * 1000))
+                        formatTime(prefs.getLong("focus_time", 10 * 60 * 1000))
                     )
                 })
             } else {
@@ -104,7 +104,7 @@ class MainActivity: AppCompatActivity() {
         }
 
         binding.aboutButton.setOnClickListener {
-            startActivity(Intent(this, AboutActivity::class.java))
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
 
         showDonateDialogIfNeeded()

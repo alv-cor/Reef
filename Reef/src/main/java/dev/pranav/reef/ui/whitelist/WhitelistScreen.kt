@@ -81,7 +81,7 @@ fun WhitelistScreen(
                 is AllowedAppsState.Success -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp)
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 16.dp)
                     ) {
                         itemsIndexed(
                             items = uiState.apps,

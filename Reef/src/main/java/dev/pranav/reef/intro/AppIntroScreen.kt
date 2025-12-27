@@ -40,6 +40,10 @@ class AppIntroActivity: ComponentActivity() {
             ReefTheme {
                 AppIntroScreen()
             }
+
+            BackHandler {
+                // do thing
+            }
         }
     }
 }
@@ -66,6 +70,9 @@ fun AppIntroScreen() {
         // context.startActivity(Intent(context, MainActivity::class.java))
         activity!!.finish()
     }
+
+    val alarmManager =
+        context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
     val pages = listOf(
         // 1. Welcome Slide
@@ -98,7 +105,7 @@ fun AppIntroScreen() {
             title = stringResource(R.string.app_usage_statistics),
             description = stringResource(R.string.app_usage_statistics_description),
             icon = Icons.Rounded.QueryStats,
-            backgroundColor = Color(0xFF7C4DFF),
+            backgroundColor = Color(0xFF536DFE),
             contentColor = Color.White,
             onNext = {
                 if (!context.hasUsageStatsPermission()) {
@@ -117,7 +124,7 @@ fun AppIntroScreen() {
                 title = stringResource(R.string.notification_permission),
                 description = stringResource(R.string.notification_permission_description),
                 icon = Icons.Rounded.NotificationsActive,
-                backgroundColor = Color(0xFFFFAB40),
+                backgroundColor = Color(0xFFF19C32),
                 contentColor = Color.White,
                 onNext = {
                     val granted = ContextCompat.checkSelfPermission(
@@ -156,16 +163,14 @@ fun AppIntroScreen() {
         ),
 
         // 6. Exact Alarm Permission (Android 12+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !alarmManager.canScheduleExactAlarms()) {
             IntroPage(
                 title = stringResource(R.string.exact_alarm_permission),
                 description = stringResource(R.string.exact_alarm_permission_description),
                 icon = Icons.Rounded.AccessAlarm,
-                backgroundColor = Color(0xFF6B46C1),
+                backgroundColor = Color(0xFF8968D5),
                 contentColor = Color.White,
                 onNext = {
-                    val alarmManager =
-                        context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
                     if (!alarmManager.canScheduleExactAlarms()) {
                         val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
                             data = "package:${context.packageName}".toUri()
@@ -177,8 +182,6 @@ fun AppIntroScreen() {
             )
         } else null
     ).filterNotNull()
-
-    BackHandler { }
 
     AppIntro(
         pages = pages,
