@@ -3,6 +3,7 @@ package dev.pranav.reef
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -66,21 +68,21 @@ class SettingsActivity: ComponentActivity() {
                         if (targetState is SettingsScreen.Pomodoro) {
                             slideInHorizontally(
                                 initialOffsetX = { it },
-                                animationSpec = tween(300)
-                            ) + fadeIn(animationSpec = tween(300)) togetherWith
+                                animationSpec = tween(100)
+                            ) + fadeIn(animationSpec = tween(100)) togetherWith
                                     slideOutHorizontally(
                                         targetOffsetX = { -it / 3 },
-                                        animationSpec = tween(300)
-                                    ) + fadeOut(animationSpec = tween(300))
+                                        animationSpec = tween(100)
+                                    ) + fadeOut(animationSpec = tween(100))
                         } else {
                             slideInHorizontally(
                                 initialOffsetX = { -it / 3 },
-                                animationSpec = tween(300)
-                            ) + fadeIn(animationSpec = tween(300)) togetherWith
+                                animationSpec = tween(100)
+                            ) + fadeIn(animationSpec = tween(100)) togetherWith
                                     slideOutHorizontally(
                                         targetOffsetX = { it },
-                                        animationSpec = tween(300)
-                                    ) + fadeOut(animationSpec = tween(300))
+                                        animationSpec = tween(100)
+                                    ) + fadeOut(animationSpec = tween(100))
                         }
                     },
                     label = "settings_screen_transition"
@@ -163,7 +165,7 @@ fun MainSettingsScreen(
             destination = SettingsScreen.Main
         ),
         SettingsMenuItem(
-            icon = Icons.Rounded.Info,
+            icon = Icons.Outlined.Info,
             title = "About",
             subtitle = "App info and credits",
             destination = SettingsScreen.Main
@@ -243,7 +245,7 @@ fun MainSettingsScreen(
             }
 
             item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp))
             }
 
             itemsIndexed(
@@ -308,6 +310,8 @@ fun PomodoroSettingsScreen(
             )
         )
     }
+
+    BackHandler(onBack = onBackPressed)
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -559,7 +563,8 @@ fun SettingsMenuItem(
                 Icon(
                     imageVector = item.icon,
                     contentDescription = null,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(36.dp),
+                    tint = MaterialTheme.colorScheme.secondary
                 )
             },
             trailingContent = {

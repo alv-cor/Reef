@@ -268,7 +268,8 @@ fun SupportCard() {
                     )
                     context.startActivity(intent)
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth(),
                 colors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer
                 ),
@@ -277,13 +278,16 @@ fun SupportCard() {
                 Icon(
                     Icons.Default.Favorite,
                     contentDescription = "Donate",
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.fillMaxHeight(),
                     tint = MaterialTheme.colorScheme.error
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     "Donate",
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.headlineLargeEmphasized,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .padding(vertical = 8.dp)
                 )
             }
         }
@@ -356,7 +360,7 @@ fun LinkCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    FilledTonalButton(
+    ElevatedButton(
         modifier = modifier,
         onClick = onClick,
         shapes = ButtonDefaults.shapes()

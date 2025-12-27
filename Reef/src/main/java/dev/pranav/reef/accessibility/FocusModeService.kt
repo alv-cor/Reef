@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
@@ -16,6 +15,10 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.edit
 import dev.pranav.reef.R
 import dev.pranav.reef.TimerActivity
+import dev.pranav.reef.timer.PomodoroConfig
+import dev.pranav.reef.timer.PomodoroPhase
+import dev.pranav.reef.timer.TimerSessionState
+import dev.pranav.reef.timer.TimerStateManager
 import dev.pranav.reef.util.AndroidUtilities
 import dev.pranav.reef.util.CHANNEL_ID
 import dev.pranav.reef.util.isPrefsInitialized
@@ -31,42 +34,75 @@ class FocusModeService: Service() {
         const val ACTION_TIMER_UPDATED = "dev.pranav.reef.TIMER_UPDATED"
         const val ACTION_PAUSE = "dev.pranav.reef.PAUSE_TIMER"
         const val ACTION_RESUME = "dev.pranav.reef.RESUME_TIMER"
+        const val ACTION_RESTART = "dev.pranav.reef.RESTART_TIMER"
         const val EXTRA_TIME_LEFT = "extra_time_left"
         const val EXTRA_TIMER_STATE = "extra_timer_state"
-
-        var isRunning = false
-        var isPaused = false
     }
 
     private val notificationManager by lazy { NotificationManagerCompat.from(this) }
-    private val systemNotificationManager by lazy { getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
+    private val systemNotificationManager by lazy { getSystemService(NOTIFICATION_SERVICE) as NotificationManager }
     private val androidUtilities by lazy { AndroidUtilities() }
 
     private var countDownTimer: CountDownTimer? = null
-    private var currentMillisRemaining: Long = 0
-    private var isStrictMode: Boolean = false
     private var notificationBuilder: NotificationCompat.Builder? = null
     private var previousInterruptionFilter: Int? = null
+    private var initialDuration: Long = 0
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!isPrefsInitialized) {
+            prefs = getSharedPreferences("prefs", MODE_PRIVATE)
+        }
+
         when (intent?.action) {
-            ACTION_PAUSE -> if (!isStrictMode) pauseTimer()
-            ACTION_RESUME -> if (!isStrictMode) resumeTimer()
+            ACTION_PAUSE -> pauseTimer()
+            ACTION_RESUME -> resumeTimer()
+            ACTION_RESTART -> restartCurrentPhase()
             else -> startTimer()
         }
         return START_STICKY
     }
 
     private fun startTimer() {
-        if (!isPrefsInitialized) {
-            prefs = getSharedPreferences("prefs", MODE_PRIVATE)
-        }
-
         val focusTimeMillis = prefs.getLong("focus_time", TimeUnit.MINUTES.toMillis(10))
-        isStrictMode = prefs.getBoolean("strict_mode", false)
-        currentMillisRemaining = focusTimeMillis
-        isRunning = true
-        isPaused = false
+        val isStrictMode = prefs.getBoolean("strict_mode", false)
+        val isPomodoroMode = prefs.getBoolean("pomodoro_mode", false)
+
+        initialDuration = focusTimeMillis
+
+        // Initialize Pomodoro config if in Pomodoro mode
+        if (isPomodoroMode) {
+            val config = PomodoroConfig(
+                focusDuration = prefs.getLong("pomodoro_focus_duration", 25 * 60 * 1000L),
+                shortBreakDuration = prefs.getLong("pomodoro_short_break_duration", 5 * 60 * 1000L),
+                longBreakDuration = prefs.getLong("pomodoro_long_break_duration", 15 * 60 * 1000L),
+                cyclesBeforeLongBreak = prefs.getInt("pomodoro_cycles_before_long_break", 4)
+            )
+            TimerStateManager.setPomodoroConfig(config)
+
+            val currentCycle = prefs.getInt("pomodoro_current_cycle", 1)
+            TimerStateManager.updateState {
+                copy(
+                    isRunning = true,
+                    isPaused = false,
+                    timeRemaining = focusTimeMillis,
+                    pomodoroPhase = PomodoroPhase.FOCUS,
+                    currentCycle = currentCycle,
+                    totalCycles = config.cyclesBeforeLongBreak,
+                    isPomodoroMode = true,
+                    isStrictMode = isStrictMode
+                )
+            }
+        } else {
+            TimerStateManager.updateState {
+                copy(
+                    isRunning = true,
+                    isPaused = false,
+                    timeRemaining = focusTimeMillis,
+                    isPomodoroMode = false,
+                    isStrictMode = isStrictMode
+                )
+            }
+        }
 
         prefs.edit { putBoolean("focus_mode", true) }
 
@@ -87,13 +123,14 @@ class FocusModeService: Service() {
     }
 
     private fun getNotificationTitle(): String {
-        if (!prefs.getBoolean("pomodoro_mode", false)) {
+        val state = TimerStateManager.state.value
+        if (!state.isPomodoroMode) {
             return getString(R.string.focus_mode)
         }
 
-        return when (prefs.getString("pomodoro_state", "FOCUS")) {
-            "SHORT_BREAK" -> "Short Break"
-            "LONG_BREAK" -> "Long Break"
+        return when (state.pomodoroPhase) {
+            PomodoroPhase.SHORT_BREAK -> "Short Break"
+            PomodoroPhase.LONG_BREAK -> "Long Break"
             else -> getString(R.string.focus_mode)
         }
     }
@@ -105,8 +142,9 @@ class FocusModeService: Service() {
 
         countDownTimer = object: CountDownTimer(timeMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
-                if (!isPaused) {
-                    currentMillisRemaining = millisUntilFinished
+                val state = TimerStateManager.state.value
+                if (!state.isPaused) {
+                    TimerStateManager.updateState { copy(timeRemaining = millisUntilFinished) }
                     updateNotificationAndBroadcast(millisUntilFinished)
                 }
             }
@@ -116,50 +154,80 @@ class FocusModeService: Service() {
     }
 
     private fun pauseTimer() {
-        countDownTimer?.cancel()
-        isRunning = false
-        isPaused = true
+        val state = TimerStateManager.state.value
+        if (state.isStrictMode) return
 
-        prefs.edit {
-            putLong("focus_time_remaining", currentMillisRemaining)
-            putBoolean("focus_mode", false)
+        countDownTimer?.cancel()
+
+        TimerStateManager.updateState {
+            copy(isRunning = false, isPaused = true)
         }
+
+        prefs.edit { putBoolean("focus_mode", false) }
 
         updateNotification(
             title = getNotificationTitle(),
-            text = formatTime(currentMillisRemaining),
+            text = formatTime(state.timeRemaining),
             showPauseButton = false
         )
-        broadcastTimerUpdate(formatTime(currentMillisRemaining))
+        broadcastTimerUpdate(formatTime(state.timeRemaining))
     }
 
     private fun resumeTimer() {
-        isRunning = true
-        isPaused = false
+        val state = TimerStateManager.state.value
+
+        TimerStateManager.updateState {
+            copy(isRunning = true, isPaused = false)
+        }
 
         prefs.edit { putBoolean("focus_mode", true) }
 
         updateNotification(
             title = getNotificationTitle(),
-            text = getString(R.string.time_remaining, formatTime(currentMillisRemaining)),
+            text = getString(R.string.time_remaining, formatTime(state.timeRemaining)),
             showPauseButton = true
         )
-        startCountdown(currentMillisRemaining)
+        startCountdown(state.timeRemaining)
+    }
+
+    private fun restartCurrentPhase() {
+        countDownTimer?.cancel()
+
+        TimerStateManager.updateState {
+            copy(
+                timeRemaining = initialDuration,
+                isPaused = false,
+                isRunning = true
+            )
+        }
+
+        prefs.edit { putBoolean("focus_mode", true) }
+
+        updateNotification(
+            title = getNotificationTitle(),
+            text = getString(R.string.time_remaining, formatTime(initialDuration)),
+            showPauseButton = !TimerStateManager.state.value.isStrictMode
+        )
+        broadcastTimerUpdate(formatTime(initialDuration))
+        startCountdown(initialDuration)
     }
 
     private fun updateNotificationAndBroadcast(millisUntilFinished: Long) {
+        val state = TimerStateManager.state.value
         val formattedTime = formatTime(millisUntilFinished)
 
         updateNotification(
             title = getNotificationTitle(),
             text = getString(R.string.time_remaining, formattedTime),
-            showPauseButton = !isStrictMode && !isPaused
+            showPauseButton = !state.isStrictMode && !state.isPaused
         )
         broadcastTimerUpdate(formattedTime)
     }
 
     private fun handleTimerComplete() {
-        if (!prefs.getBoolean("pomodoro_mode", false)) {
+        val state = TimerStateManager.state.value
+
+        if (!state.isPomodoroMode) {
             endSession()
             return
         }
@@ -168,32 +236,51 @@ class FocusModeService: Service() {
     }
 
     private fun endSession() {
-        isRunning = false
-        isPaused = false
+        TimerStateManager.updateState {
+            copy(isRunning = false, isPaused = false)
+        }
+
         prefs.edit { putBoolean("focus_mode", false) }
+
         broadcastTimerUpdate("00:00")
+        TimerStateManager.reset()
         stopSelf()
     }
 
     private fun transitionPomodoroPhase() {
-        val currentState = prefs.getString("pomodoro_state", "FOCUS") ?: "FOCUS"
-        val nextPhase = calculateNextPomodoroPhase(currentState)
+        val state = TimerStateManager.state.value
+        val config = TimerStateManager.getPomodoroConfig() ?: return endSession()
 
-        prefs.edit {
-            putString("pomodoro_state", nextPhase.state)
-            putInt("pomodoro_current_cycle", nextPhase.cycles)
-            putLong("focus_time", nextPhase.duration)
-            putBoolean("focus_mode", nextPhase.state == "FOCUS")
+        val nextPhase = calculateNextPhase(state, config)
+
+        if (nextPhase.isComplete) {
+            endSession()
+            return
         }
 
+        // Update state with new phase
+        TimerStateManager.updateState {
+            copy(
+                pomodoroPhase = nextPhase.phase,
+                currentCycle = nextPhase.currentCycle,
+                timeRemaining = nextPhase.duration
+            )
+        }
+
+        // Store current cycle for persistence
+        prefs.edit {
+            putInt("pomodoro_current_cycle", nextPhase.currentCycle)
+            putBoolean("focus_mode", nextPhase.phase == PomodoroPhase.FOCUS)
+        }
+
+        initialDuration = nextPhase.duration
+
         // Manage DND based on phase
-        if (nextPhase.state == "FOCUS") {
+        if (nextPhase.phase == PomodoroPhase.FOCUS) {
             enableDNDIfNeeded()
         } else {
             restoreDND()
         }
-
-        currentMillisRemaining = nextPhase.duration
 
         if (prefs.getBoolean("enable_pomodoro_vibration", true)) {
             androidUtilities.vibrate(this, 1000)
@@ -206,41 +293,59 @@ class FocusModeService: Service() {
         updateNotification(
             title = getNotificationTitle(),
             text = getString(R.string.time_remaining, formatTime(nextPhase.duration)),
-            showPauseButton = !isStrictMode
+            showPauseButton = !state.isStrictMode
         )
         broadcastTimerUpdate(formatTime(nextPhase.duration))
         startCountdown(nextPhase.duration)
     }
 
-    private fun calculateNextPomodoroPhase(currentState: String): PomodoroPhase {
-        val cycles = prefs.getInt("pomodoro_current_cycle", 0)
-        val cyclesBeforeLongBreak = prefs.getInt("pomodoro_cycles_before_long_break", 4)
+    private data class NextPhaseResult(
+        val phase: PomodoroPhase,
+        val duration: Long,
+        val currentCycle: Int,
+        val isComplete: Boolean
+    )
 
-        return when (currentState) {
-            "FOCUS" -> {
-                // Check if this completed cycle reaches the long break threshold
-                if (cycles >= cyclesBeforeLongBreak) {
-                    PomodoroPhase(
-                        state = "LONG_BREAK",
-                        duration = prefs.getLong("pomodoro_long_break_duration", 15 * 60 * 1000L),
-                        cycles = 0
+    private fun calculateNextPhase(
+        state: TimerSessionState,
+        config: PomodoroConfig
+    ): NextPhaseResult {
+        return when (state.pomodoroPhase) {
+            PomodoroPhase.FOCUS -> {
+                if (state.currentCycle >= state.totalCycles) {
+                    NextPhaseResult(
+                        phase = PomodoroPhase.LONG_BREAK,
+                        duration = config.longBreakDuration,
+                        currentCycle = 0,
+                        isComplete = false
                     )
                 } else {
-                    // Increment cycle for next focus session
-                    val newCycles = cycles + 1
-                    PomodoroPhase(
-                        state = "SHORT_BREAK",
-                        duration = prefs.getLong("pomodoro_short_break_duration", 5 * 60 * 1000L),
-                        cycles = newCycles
+                    NextPhaseResult(
+                        phase = PomodoroPhase.SHORT_BREAK,
+                        duration = config.shortBreakDuration,
+                        currentCycle = state.currentCycle + 1,
+                        isComplete = false
                     )
                 }
             }
 
-            else -> PomodoroPhase(
-                state = "FOCUS",
-                duration = prefs.getLong("pomodoro_focus_duration", 25 * 60 * 1000L),
-                cycles = cycles
-            )
+            PomodoroPhase.LONG_BREAK -> {
+                NextPhaseResult(
+                    phase = PomodoroPhase.COMPLETE,
+                    duration = 0,
+                    currentCycle = 0,
+                    isComplete = true
+                )
+            }
+
+            else -> {
+                NextPhaseResult(
+                    phase = PomodoroPhase.FOCUS,
+                    duration = config.focusDuration,
+                    currentCycle = state.currentCycle,
+                    isComplete = false
+                )
+            }
         }
     }
 
@@ -295,10 +400,11 @@ class FocusModeService: Service() {
     }
 
     private fun broadcastTimerUpdate(formattedTime: String) {
+        val state = TimerStateManager.state.value
         val intent = Intent(ACTION_TIMER_UPDATED).apply {
             setPackage(packageName)
             putExtra(EXTRA_TIME_LEFT, formattedTime)
-            putExtra(EXTRA_TIMER_STATE, prefs.getString("pomodoro_state", "FOCUS"))
+            putExtra(EXTRA_TIMER_STATE, state.pomodoroPhase.name)
         }
         sendBroadcast(intent)
     }
@@ -346,16 +452,11 @@ class FocusModeService: Service() {
         countDownTimer?.cancel()
         notificationManager.cancel(NOTIFICATION_ID)
         restoreDND()
-        isRunning = false
-        isPaused = false
-        prefs.edit { putBoolean("focus_mode", false) }
-    }
 
-    private data class PomodoroPhase(
-        val state: String,
-        val duration: Long,
-        val cycles: Int
-    )
+        prefs.edit { putBoolean("focus_mode", false) }
+
+        TimerStateManager.reset()
+    }
 }
 
 fun formatTime(millis: Long): String {

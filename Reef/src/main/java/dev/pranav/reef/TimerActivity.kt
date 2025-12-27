@@ -25,9 +25,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -35,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import dev.pranav.reef.accessibility.FocusModeService
+import dev.pranav.reef.timer.TimerStateManager
 import dev.pranav.reef.ui.ReefTheme
 import dev.pranav.reef.util.AndroidUtilities
 import dev.pranav.reef.util.prefs
@@ -56,12 +59,9 @@ class TimerActivity: ComponentActivity() {
         override fun onReceive(context: Context, intent: Intent) {
             val left = intent.getStringExtra(FocusModeService.EXTRA_TIME_LEFT) ?: "00:00"
             currentTimeLeft = left
-            isPaused = FocusModeService.isPaused
             currentTimerState = intent.getStringExtra(FocusModeService.EXTRA_TIMER_STATE) ?: "FOCUS"
 
             if (left == "00:00" && !prefs.getBoolean("pomodoro_mode", false)) {
-                isTimerRunning = false
-                isPaused = false
                 val androidUtilities = AndroidUtilities()
                 androidUtilities.vibrate(context, 500)
             }
@@ -70,9 +70,6 @@ class TimerActivity: ComponentActivity() {
 
     private var currentTimeLeft by mutableStateOf("00:00")
     private var currentTimerState by mutableStateOf("FOCUS")
-    private var isTimerRunning by mutableStateOf(false)
-    private var isPaused by mutableStateOf(false)
-    private var isStrictMode by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,27 +89,29 @@ class TimerActivity: ComponentActivity() {
             )
         }
 
-        if (FocusModeService.isRunning || FocusModeService.isPaused) {
-            isTimerRunning = true
-            isPaused = FocusModeService.isPaused
-            isStrictMode = prefs.getBoolean("strict_mode", false)
-            currentTimeLeft = intent.getStringExtra(FocusModeService.EXTRA_TIME_LEFT) ?: "00:00"
-            currentTimerState = prefs.getString("pomodoro_state", "FOCUS") ?: "FOCUS"
-        } else if (intent.hasExtra(FocusModeService.EXTRA_TIME_LEFT)) {
-            currentTimeLeft = intent.getStringExtra(FocusModeService.EXTRA_TIME_LEFT) ?: "00:00"
-            isTimerRunning = true
-            isStrictMode = prefs.getBoolean("strict_mode", false)
-            currentTimerState = prefs.getString("pomodoro_state", "FOCUS") ?: "FOCUS"
-        }
-
         setContent {
+            val timerState by TimerStateManager.state.collectAsState()
+
+            // Initialize UI state from service if it's running
+            LaunchedEffect(Unit) {
+                if (timerState.isRunning || timerState.isPaused) {
+                    currentTimeLeft =
+                        intent.getStringExtra(FocusModeService.EXTRA_TIME_LEFT) ?: "00:00"
+                    currentTimerState = timerState.pomodoroPhase.name
+                } else if (intent.hasExtra(FocusModeService.EXTRA_TIME_LEFT)) {
+                    currentTimeLeft =
+                        intent.getStringExtra(FocusModeService.EXTRA_TIME_LEFT) ?: "00:00"
+                    currentTimerState = timerState.pomodoroPhase.name
+                }
+            }
+
             ReefTheme {
                 FocusTimerScreen(
-                    isTimerRunning = isTimerRunning,
-                    isPaused = isPaused,
+                    isTimerRunning = timerState.isRunning,
+                    isPaused = timerState.isPaused,
                     currentTimeLeft = currentTimeLeft,
                     currentTimerState = currentTimerState,
-                    isStrictMode = isStrictMode,
+                    isStrictMode = timerState.isStrictMode,
                     onStartTimer = { config -> startFocusMode(config) },
                     onPauseTimer = { pauseFocusMode() },
                     onResumeTimer = { resumeFocusMode() },
@@ -132,7 +131,6 @@ class TimerActivity: ComponentActivity() {
                     putLong("focus_time", config.minutes * 60 * 1000L)
                     putBoolean("strict_mode", config.strictMode)
                 }
-                isStrictMode = config.strictMode
             }
 
             is TimerConfig.Pomodoro -> {
@@ -148,36 +146,32 @@ class TimerActivity: ComponentActivity() {
                     putString("pomodoro_state", "FOCUS")
                     putBoolean("strict_mode", config.strictMode)
                 }
-                isStrictMode = config.strictMode
             }
         }
 
         startForegroundService(Intent(this, FocusModeService::class.java))
-        isTimerRunning = true
-        isPaused = false
     }
 
     private fun pauseFocusMode() {
         startService(Intent(this, FocusModeService::class.java).apply {
             action = FocusModeService.ACTION_PAUSE
         })
-        isPaused = true
     }
 
     private fun resumeFocusMode() {
         startService(Intent(this, FocusModeService::class.java).apply {
             action = FocusModeService.ACTION_RESUME
         })
-        isPaused = false
+    }
+
+    fun restartFocusMode() {
+        startService(Intent(this, FocusModeService::class.java).apply {
+            action = FocusModeService.ACTION_RESTART
+        })
     }
 
     private fun cancelFocusMode() {
         stopService(Intent(this, FocusModeService::class.java))
-        isTimerRunning = false
-        isPaused = false
-        isStrictMode = false
-        currentTimeLeft = "00:00"
-        currentTimerState = "FOCUS"
         prefs.edit {
             putBoolean("focus_mode", false)
             remove("strict_mode")
@@ -185,7 +179,8 @@ class TimerActivity: ComponentActivity() {
     }
 
     private fun handleBackPress() {
-        if (FocusModeService.isRunning && !FocusModeService.isPaused) {
+        val timerState = TimerStateManager.state.value
+        if (timerState.isRunning && !timerState.isPaused) {
             startActivity(Intent(Intent.ACTION_MAIN).apply {
                 addCategory(Intent.CATEGORY_HOME)
             })
@@ -197,7 +192,8 @@ class TimerActivity: ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(timerReceiver)
-        if (!FocusModeService.isRunning && !FocusModeService.isPaused) {
+        val timerState = TimerStateManager.state.value
+        if (!timerState.isRunning && !timerState.isPaused) {
             prefs.edit {
                 putBoolean("focus_mode", false)
                 remove("strict_mode")
@@ -226,7 +222,7 @@ fun FocusTimerScreen(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
-            LargeFlexibleTopAppBar(
+            TopAppBar(
                 title = {
                     Text(
                         "Focus Mode",
@@ -261,6 +257,7 @@ fun FocusTimerScreen(
                 label = "timer_state"
             ) { running ->
                 if (running) {
+                    val context = LocalContext.current as TimerActivity
                     RunningTimerView(
                         timeLeft = currentTimeLeft,
                         timerState = currentTimerState,
@@ -268,7 +265,8 @@ fun FocusTimerScreen(
                         isStrictMode = isStrictMode,
                         onPause = onPauseTimer,
                         onResume = onResumeTimer,
-                        onCancel = onCancelTimer
+                        onCancel = onCancelTimer,
+                        onRestart = { context.restartFocusMode() }
                     )
                 } else {
                     FocusTimerSetupView(
@@ -750,7 +748,7 @@ fun ExpressiveCounter(
         Text(
             text = label,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.Medium
         )
 
         Text(
@@ -791,7 +789,8 @@ fun RunningTimerView(
     isStrictMode: Boolean,
     onPause: () -> Unit,
     onResume: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onRestart: () -> Unit = {}
 ) {
     val isPomodoroMode = prefs.getBoolean("pomodoro_mode", false)
     val currentCycle = prefs.getInt("pomodoro_current_cycle", 0)
@@ -863,23 +862,25 @@ fun RunningTimerView(
                     modifier = Modifier
                         .size(48.dp)
                         .padding(bottom = 8.dp),
-                    tint = MaterialTheme.colorScheme.tertiary
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
 
             Text(
                 text = stateText,
-                style = MaterialTheme.typography.displayMedium,
-                color = if (isBreak) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.displaySmall,
+                color = if (isBreak) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 8.dp),
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Serif,
             )
 
             Text(
                 text = timeLeft,
-                style = MaterialTheme.typography.displayLarge,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
+                fontFamily = FontFamily.SansSerif,
+                fontSize = 88.sp,
                 color = if (isBreak) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface
             )
 
@@ -918,6 +919,7 @@ fun RunningTimerView(
                 onPause = onPause,
                 onResume = onResume,
                 onCancel = onCancel,
+                onRestart = onRestart,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth(0.95f)
@@ -943,6 +945,7 @@ fun RunningTimerActions(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onCancel: () -> Unit,
+    onRestart: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -954,20 +957,20 @@ fun RunningTimerActions(
             checked = isPaused,
             onCheckedChange = { if (isPaused) onResume() else onPause() },
             shapes = IconButtonDefaults.toggleableShapes(
-                shape = IconButtonDefaults.standardShape
+                shape = IconButtonDefaults.largeSquareShape
             ),
             colors = IconButtonDefaults.filledIconToggleButtonColors(
                 MaterialTheme.colorScheme.secondaryContainer,
                 checkedContainerColor = MaterialTheme.colorScheme.surfaceContainer
             ),
             modifier = Modifier
-                .height(68.dp)
-                .aspectRatio(0.8f)
+                .height(62.dp)
+                .aspectRatio(0.89f)
         ) {
             Icon(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(8.dp),
+                    .padding(9.dp),
                 imageVector = if (isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
                 contentDescription = if (isPaused) "Resume" else "Pause"
             )
@@ -988,7 +991,7 @@ fun RunningTimerActions(
         }
 
         OutlinedButton(
-            onClick = { },
+            onClick = onRestart,
             shapes = ButtonDefaults.shapes(
                 shape = ButtonDefaults.elevatedShape
             ),
@@ -996,7 +999,7 @@ fun RunningTimerActions(
         ) {
             Text(
                 text = "↻",
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.headlineSmall
             )
         }
     }

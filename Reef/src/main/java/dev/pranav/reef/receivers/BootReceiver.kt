@@ -13,7 +13,7 @@ import dev.pranav.reef.util.isPrefsInitialized
 import dev.pranav.reef.util.prefs
 
 
-class BootReceiver : BroadcastReceiver() {
+class BootReceiver: BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (!context.isAccessibilityServiceEnabledForBlocker()) return
 
@@ -38,7 +38,7 @@ class BootReceiver : BroadcastReceiver() {
                 }
             }
 
-            Intent.ACTION_PACKAGE_REPLACED -> {
+            Intent.ACTION_MY_PACKAGE_REPLACED -> {
                 Log.d("BootReceiver", "Package replaced, rescheduling routines")
 
                 // Initialize prefs if not already done
@@ -48,7 +48,7 @@ class BootReceiver : BroadcastReceiver() {
 
                 // Show donate dialog
                 prefs.edit {
-                    putBoolean("donate_dialog_shown", false)
+                    putBoolean("show_dialog", true)
                 }
 
                 // Reschedule all enabled routines

@@ -1,6 +1,5 @@
 package dev.pranav.reef.util
 
-import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
@@ -49,13 +48,6 @@ object AppLimits {
             .atStartOfDay(ZoneId.systemDefault())
             .toInstant()
             .toEpochMilli()
-
-    fun getUsageMapToday(context: Context): Map<String, Long> {
-        val usm =
-            context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-
-        return UsageCalculator.calculateUsage(usm, startOfToday(), System.currentTimeMillis())
-    }
 
     fun reminderSentToday(pkg: String): Boolean =
         reminderSent[pkg]?.let { it >= startOfToday() } ?: false
@@ -128,10 +120,6 @@ object Whitelist {
         }
     }
 
-    fun getWhitelist(): Set<String> {
-        return sharedPreferences.all.keys.toSet()
-    }
-
     fun isWhitelisted(packageName: String): Boolean {
         return sharedPreferences.getBoolean(packageName, false)
     }
@@ -149,17 +137,29 @@ object Whitelist {
     }
 
     val allowedApps = hashSetOf(
-        "com.android.systemui",
-        "com.android.settings",
         "dev.pranav.reef",
+        "dev.pranav.applock",
+
+        "com.android.systemui",
+        "com.android.systemui.accessibility.accessibilitymenu",
+        "com.android.settings",
         "com.android.calculator2",
         "com.android.mms",
         "com.android.phone",
         "com.android.camera",
         "com.android.camera2",
+        "com.android.dreams.basic",
+        "com.android.bluetooth",
+        "com.android.emergency",
+        "com.android.companiondevicemanager",
+
+        "com.android.providers.downloads.ui",
+        "com.google.android.providers.media.module",
+
         "com.google.android.deskclock",
         "com.google.android.calendar",
         "com.google.android.keep",
+        "com.google.android.contacts",
 
         "com.google.android.apps.docs",
         "com.google.android.apps.drive",
@@ -179,9 +179,10 @@ object Whitelist {
         "com.google.android.packageinstaller",
         "com.google.android.gms",
         "com.google.android.googlequicksearchbox",
-        "com.android.settings.intelligence",
         "com.google.android.settings.intelligence",
+        "com.google.android.projection.gearhead",
 
+        "app.revanced.android.gms", // MicroG / ReVanced GMS
         "net.osmand",
         "com.fsck.k9",
         "com.google.android.apps.wellbeing",
@@ -192,17 +193,21 @@ object Whitelist {
         "com.lineageos.aperture",
         "com.shazam.android",
         "com.synapsetech.compass",
-        "hr.dtekac.prognoza",
         "me.jmh.authenticatorpro",
+        "md.obsidian",
 
-        "com.microsoft.office.officehubrow",
         "com.slack",
         "com.google.android.gm",
         "com.google.android.apps.meet",
         "com.microsoft.teams",
         "com.paypal.android.p2pmobile",
-        "com.google.android.apps.chromecast.app",
         "com.google.android.apps.nbu.paisa.user",
-        "com.whatsapp"
+        "com.fampay.in",
+        "com.google.android.marvin.talkback",
+
+        // OEM apps
+        "com.motorola.dynamicvolume",
+        "com.motorola.camera3",
+        "com.motorola.dolby.dolbyui",
     )
 }

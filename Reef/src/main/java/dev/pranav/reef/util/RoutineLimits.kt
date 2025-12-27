@@ -64,10 +64,6 @@ object RoutineLimits {
         return prefs.getString(ACTIVE_ROUTINE_KEY, null)
     }
 
-    fun isRoutineActive(): Boolean {
-        return getActiveRoutineId() != null && routineLimits.isNotEmpty()
-    }
-
     private fun saveRoutineLimits() {
         val keys = prefs.all.keys.filter { it.startsWith("routine_limit_") }
         prefs.edit {

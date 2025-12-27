@@ -18,6 +18,7 @@ import dev.pranav.reef.accessibility.FocusModeService
 import dev.pranav.reef.accessibility.formatTime
 import dev.pranav.reef.databinding.ActivityMainBinding
 import dev.pranav.reef.intro.AppIntroActivity
+import dev.pranav.reef.timer.TimerStateManager
 import dev.pranav.reef.util.*
 
 class MainActivity: AppCompatActivity() {
@@ -69,7 +70,7 @@ class MainActivity: AppCompatActivity() {
         if (prefs.getBoolean("first_run", true)) {
             startActivity(Intent(this, AppIntroActivity::class.java))
         } else {
-            if (FocusModeService.isRunning) {
+            if (TimerStateManager.state.value.isRunning) {
                 Log.d("MainActivity", "Starting timer activity")
                 startActivity(Intent(this, TimerActivity::class.java).apply {
                     putExtra(
@@ -125,35 +126,58 @@ class MainActivity: AppCompatActivity() {
     }
 
     private fun showDonateDialogIfNeeded() {
-        if (!prefs.getBoolean("donate_dialog_shown", false) && !prefs.getBoolean(
+        if (!prefs.getBoolean(
                 "first_run",
                 true
             )
         ) {
-            MaterialAlertDialogBuilder(this)
-                .setTitle("Enjoying Reef?")
-                .setMessage(
-                    """
-                        I'm a student who maintains Reef in my personal time, and your support is the only way to sustain continuous improvements.
-                        
-                        Your support of any amount helps keep this project alive and improving.
-                        
-                        If Reef helps you, please consider supporting its future.
-                    """.trimIndent()
-                )
-                .setPositiveButton("Support") { _, _ ->
-                    val intent = Intent(
-                        Intent.ACTION_VIEW,
-                        Uri.parse("https://PranavPurwar.github.io/donate.html")
+            if (!prefs.getBoolean("discord_shown", false)
+            ) {
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("Join the community")
+                    .setMessage(
+                        "Join our discord community to connect with other users, share feedback, and stay updated on the latest news and features."
                     )
-                    startActivity(intent)
-                    prefs.edit { putBoolean("donate_dialog_shown", true) }
-                }
-                .setNegativeButton("Maybe Later") { _, _ ->
-                    prefs.edit { putBoolean("donate_dialog_shown", true) }
-                }
-                .setCancelable(true)
-                .show()
+                    .setPositiveButton("Join Discord") { _, _ ->
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://discord.gg/46wCMRVAre")
+                        )
+                        startActivity(intent)
+                        prefs.edit { putBoolean("discord_shown", true) }
+                    }
+                    .setNegativeButton("Maybe Later") { _, _ ->
+                        prefs.edit { putBoolean("discord_shown", true) }
+                    }
+                    .setCancelable(true)
+                    .show()
+            }
+            if (prefs.getBoolean("show_dialog", false)) {
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("Enjoying Reef?")
+                    .setMessage(
+                        """
+                            I'm a student who maintains Reef in my personal time, and your support is the only way to sustain continuous improvements.
+    
+                            Your support of any amount helps keep this project alive and improving.
+    
+                            If Reef helps you, please consider supporting its future.
+                        """.trimIndent()
+                    )
+                    .setPositiveButton("Support") { _, _ ->
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://PranavPurwar.github.io/donate.html")
+                        )
+                        startActivity(intent)
+                        prefs.edit { putBoolean("show_dialog", false) }
+                    }
+                    .setNegativeButton("Maybe Later") { _, _ ->
+                        prefs.edit { putBoolean("show_dialog", false) }
+                    }
+                    .setCancelable(true)
+                    .show()
+            }
         }
     }
 

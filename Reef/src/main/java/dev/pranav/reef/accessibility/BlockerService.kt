@@ -27,7 +27,6 @@ class BlockerService: AccessibilityService() {
 
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        Log.d("BlockerService", event.toString())
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return
 
         val pkg = event.packageName?.toString() ?: return

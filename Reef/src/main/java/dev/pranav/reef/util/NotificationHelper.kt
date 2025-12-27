@@ -17,7 +17,6 @@ import dev.pranav.reef.data.Routine
 object NotificationHelper {
     private const val ROUTINE_NOTIFICATION_ID = 100
     private const val REMINDER_NOTIFICATION_ID = 200
-    private const val GRACE_PERIOD_NOTIFICATION_ID = 300
 
     fun Context.createNotificationChannel() {
         val descriptionText = "Shows reminders for screen time and when apps are blocked."

@@ -156,6 +156,7 @@ fun AppIntroScreen() {
                     context.startActivity(intent)
                     false
                 } else {
+                    RoutineManager.saveRoutines(RoutineManager.createDefaultRoutines())
                     prefs.edit { putBoolean("first_run", false) }
                     true
                 }
