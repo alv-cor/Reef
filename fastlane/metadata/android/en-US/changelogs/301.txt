@@ -6,3 +6,5 @@ New appintro setup
 Improve routines handling
 Slightly modify icon
 Improve permissions and other screen design
+Improve design
+New features
