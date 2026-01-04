@@ -1,17 +1,19 @@
 package dev.pranav.reef.routine
 
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import android.util.Log
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import dev.pranav.reef.data.Routine
 import dev.pranav.reef.data.RoutineSchedule
 import java.util.Date
+import java.util.concurrent.TimeUnit
 
 /**
- * Manages scheduling of routines using Android's AlarmManager.
- * Handles scheduling activation and deactivation alarms.
+ * Manages scheduling of routines using WorkManager for reliable execution.
+ * Handles scheduling activation and deactivation work requests.
  */
 object RoutineScheduler {
     private const val TAG = "RoutineScheduler"
@@ -28,7 +30,7 @@ object RoutineScheduler {
 
     /**
      * Schedule a single routine. Determines if it should be active now,
-     * and schedules appropriate activation/deactivation alarms.
+     * and schedules appropriate activation/deactivation work.
      */
     fun scheduleRoutine(context: Context, routine: Routine) {
         if (!routine.isEnabled || routine.schedule.type == RoutineSchedule.ScheduleType.MANUAL) {
@@ -36,14 +38,12 @@ object RoutineScheduler {
         }
 
         if (RoutineScheduleCalculator.isRoutineActiveNow(routine)) {
-            // Activate immediately and schedule deactivation
             RoutineExecutor.activateRoutine(context, routine)
 
             if (routine.schedule.endTime != null) {
                 scheduleDeactivation(context, routine)
             }
         } else {
-            // Schedule future activation and deactivation
             scheduleActivation(context, routine)
 
             if (routine.schedule.endTime != null) {
@@ -53,126 +53,64 @@ object RoutineScheduler {
     }
 
     /**
-     * Schedule routine activation alarm.
+     * Schedule routine activation using WorkManager.
      */
     fun scheduleActivation(context: Context, routine: Routine) {
-        scheduleAlarm(context, routine, isActivation = true)
+        scheduleWork(context, routine, isActivation = true)
     }
 
     /**
-     * Schedule routine deactivation alarm.
+     * Schedule routine deactivation using WorkManager.
      */
     fun scheduleDeactivation(context: Context, routine: Routine) {
-        scheduleAlarm(context, routine, isActivation = false)
+        scheduleWork(context, routine, isActivation = false)
     }
 
     /**
-     * Cancel all alarms for a routine.
+     * Cancel all scheduled work for a routine.
      */
     fun cancelRoutine(context: Context, routineId: String) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-
-        // Cancel both activation and deactivation alarms
-        listOf(true, false).forEach { isActivation ->
-            val pendingIntent =
-                createPendingIntent(context, routineId, isActivation, PendingIntent.FLAG_NO_CREATE)
-            pendingIntent?.let {
-                alarmManager.cancel(it)
-                it.cancel()
-            }
-        }
-
-        Log.d(TAG, "Cancelled all alarms for routine: $routineId")
+        val workManager = WorkManager.getInstance(context)
+        workManager.cancelUniqueWork(RoutineWorker.getActivationWorkName(routineId))
+        workManager.cancelUniqueWork(RoutineWorker.getDeactivationWorkName(routineId))
+        Log.d(TAG, "Cancelled all work for routine: $routineId")
     }
 
-    private fun scheduleAlarm(context: Context, routine: Routine, isActivation: Boolean) {
+    private fun scheduleWork(context: Context, routine: Routine, isActivation: Boolean) {
         val triggerTime = RoutineScheduleCalculator.calculateNextTriggerTime(
             routine.schedule,
             useStartTime = isActivation
         ) ?: return
 
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val pendingIntent = createPendingIntent(
-            context,
-            routine.id,
-            isActivation,
-            PendingIntent.FLAG_UPDATE_CURRENT
-        )
-            ?: run {
-                Log.e(TAG, "Failed to create PendingIntent for routine ${routine.name}")
-                return
-            }
-
-        try {
-            scheduleExactAlarm(alarmManager, triggerTime, pendingIntent)
-            logScheduled(routine, isActivation, triggerTime)
-        } catch (e: SecurityException) {
-            scheduleInexactAlarm(alarmManager, triggerTime, pendingIntent)
-            logScheduled(routine, isActivation, triggerTime, inexact = true)
+        val delay = triggerTime - System.currentTimeMillis()
+        if (delay <= 0) {
+            Log.w(TAG, "Trigger time already passed for ${routine.name}, skipping")
+            return
         }
-    }
 
-    private fun scheduleExactAlarm(
-        alarmManager: AlarmManager,
-        triggerTime: Long,
-        pendingIntent: PendingIntent
-    ) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            if (alarmManager.canScheduleExactAlarms()) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerTime,
-                    pendingIntent
-                )
-            } else {
-                scheduleInexactAlarm(alarmManager, triggerTime, pendingIntent)
-            }
+        val inputData = Data.Builder()
+            .putString(RoutineWorker.KEY_ROUTINE_ID, routine.id)
+            .putBoolean(RoutineWorker.KEY_IS_ACTIVATION, isActivation)
+            .build()
+
+        val workRequest = OneTimeWorkRequestBuilder<RoutineWorker>()
+            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+            .setInputData(inputData)
+            .build()
+
+        val workName = if (isActivation) {
+            RoutineWorker.getActivationWorkName(routine.id)
         } else {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                triggerTime,
-                pendingIntent
-            )
-        }
-    }
-
-    private fun scheduleInexactAlarm(
-        alarmManager: AlarmManager,
-        triggerTime: Long,
-        pendingIntent: PendingIntent
-    ) {
-        alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-    }
-
-    private fun createPendingIntent(
-        context: Context,
-        routineId: String,
-        isActivation: Boolean,
-        flags: Int
-    ): PendingIntent? {
-        val intent = Intent(context, RoutineActivationReceiver::class.java).apply {
-            putExtra(RoutineActivationReceiver.EXTRA_ROUTINE_ID, routineId)
-            putExtra(RoutineActivationReceiver.EXTRA_IS_ACTIVATION, isActivation)
+            RoutineWorker.getDeactivationWorkName(routine.id)
         }
 
-        val requestCode = getRequestCode(routineId, isActivation)
-        val allFlags = flags or PendingIntent.FLAG_IMMUTABLE
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            workName,
+            ExistingWorkPolicy.REPLACE,
+            workRequest
+        )
 
-        return PendingIntent.getBroadcast(context, requestCode, intent, allFlags)
-    }
-
-    private fun getRequestCode(routineId: String, isActivation: Boolean): Int {
-        return if (isActivation) routineId.hashCode() else routineId.hashCode() + 1
-    }
-
-    private fun logScheduled(
-        routine: Routine,
-        isActivation: Boolean,
-        triggerTime: Long,
-        inexact: Boolean = false
-    ) {
         val action = if (isActivation) "activation" else "deactivation"
-        val exactness = if (inexact) " (inexact)" else ""
-        Log.d(TAG, "Scheduled ${routine.name} $action$exactness for ${Date(triggerTime)}")
+        Log.d(TAG, "Scheduled ${routine.name} $action with WorkManager for ${Date(triggerTime)}")
     }
 }

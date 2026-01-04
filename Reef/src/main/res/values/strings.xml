@@ -291,4 +291,17 @@
         <item quantity="one">%1$s will be blocked in %2$d minute</item>
         <item quantity="other">%1$s will be blocked in %2$d minutes</item>
     </plurals>
+
+    <string name="routine_channel_name">Routine Alerts</string>
+    <string name="routine_channel_description">Notifications about routine activations and deactivations.</string>
+
+    <string name="reminder_channel_description">Notifications reminding you about screen usage.</string>
+    <string name="reminder_channel_name">Screen Time Reminders</string>
+
+    <string name="focus_mode_channel_name">Focus Mode</string>
+    <string name="focus_mode_channel_description">Notifications related to Focus Mode sessions.</string>
+
+    <!-- Break Alert strings -->
+    <string name="break_ended_title">Break Over!</string>
+    <string name="break_ended_message">Time to get back to work. Your focus session is starting now.</string>
 </resources>

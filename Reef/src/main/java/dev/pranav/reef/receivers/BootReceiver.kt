@@ -31,7 +31,7 @@ class BootReceiver: BroadcastReceiver() {
 
                 // Reschedule daily summary if enabled
                 if (prefs.getBoolean("daily_summary", false)) {
-                    DailySummaryScheduler.scheduleNextDailySummary(context)
+                    DailySummaryScheduler.scheduleDailySummary(context)
                 }
 
                 val accessibilityIntent = Intent(context, BlockerService::class.java)
@@ -61,7 +61,7 @@ class BootReceiver: BroadcastReceiver() {
 
                 // Reschedule daily summary if enabled
                 if (prefs.getBoolean("daily_summary", false)) {
-                    DailySummaryScheduler.scheduleNextDailySummary(context)
+                    DailySummaryScheduler.scheduleDailySummary(context)
                 }
 
                 val accessibilityIntent = Intent(context, BlockerService::class.java)

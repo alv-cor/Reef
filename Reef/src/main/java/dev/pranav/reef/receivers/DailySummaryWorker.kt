@@ -3,31 +3,40 @@ package dev.pranav.reef.receivers
 import android.Manifest
 import android.app.PendingIntent
 import android.app.usage.UsageStatsManager
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.work.Worker
+import androidx.work.WorkerParameters
 import dev.pranav.reef.MainActivity
 import dev.pranav.reef.R
-import dev.pranav.reef.util.CHANNEL_ID
+import dev.pranav.reef.util.REMINDER_CHANNEL_ID
 import dev.pranav.reef.util.ScreenUsageHelper
 import dev.pranav.reef.util.isPrefsInitialized
 import dev.pranav.reef.util.prefs
 
-class DailySummaryReceiver: BroadcastReceiver() {
+class DailySummaryWorker(
+    private val context: Context,
+    workerParams: WorkerParameters
+): Worker(context, workerParams) {
 
-    override fun onReceive(context: Context, intent: Intent) {
+    override fun doWork(): Result {
         if (!isPrefsInitialized) {
             prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
         }
 
         if (!prefs.getBoolean("daily_summary", false)) {
-            return
+            return Result.success()
         }
 
+        showDailySummaryNotification()
+        return Result.success()
+    }
+
+    private fun showDailySummaryNotification() {
         val usageStatsManager =
             context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val todayUsage = ScreenUsageHelper.fetchAppUsageTodayTillNow(usageStatsManager)
@@ -59,7 +68,7 @@ class DailySummaryReceiver: BroadcastReceiver() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, REMINDER_CHANNEL_ID)
             .setContentTitle(context.getString(R.string.daily_summary_title))
             .setContentText(context.getString(R.string.daily_summary_message, usageText))
             .setSmallIcon(R.drawable.round_schedule_24)
@@ -76,12 +85,11 @@ class DailySummaryReceiver: BroadcastReceiver() {
             NotificationManagerCompat.from(context)
                 .notify(DAILY_SUMMARY_NOTIFICATION_ID, notification)
         }
-
-        DailySummaryScheduler.scheduleNextDailySummary(context)
     }
 
     companion object {
         const val DAILY_SUMMARY_NOTIFICATION_ID = 300
+        const val WORK_NAME = "daily_summary_work"
     }
 }
 

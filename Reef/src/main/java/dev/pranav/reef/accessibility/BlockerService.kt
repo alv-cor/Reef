@@ -8,7 +8,7 @@ import android.view.accessibility.AccessibilityEvent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import dev.pranav.reef.R
-import dev.pranav.reef.util.CHANNEL_ID
+import dev.pranav.reef.util.BLOCKER_CHANNEL_ID
 import dev.pranav.reef.util.NotificationHelper.createNotificationChannel
 import dev.pranav.reef.util.Whitelist
 import dev.pranav.reef.util.isPrefsInitialized
@@ -83,7 +83,7 @@ class BlockerService: AccessibilityService() {
             else -> getString(R.string.reached_limit, appName)
         }
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(this, BLOCKER_CHANNEL_ID)
             .setSmallIcon(R.drawable.round_hourglass_disabled_24)
             .setContentTitle(getString(R.string.app_blocked))
             .setContentText(contentText)
@@ -98,6 +98,7 @@ class BlockerService: AccessibilityService() {
     @SuppressLint("MissingPermission")
     private fun showFocusModeNotification(pkg: String) {
         if (NotificationManagerCompat.from(this).areNotificationsEnabled().not()) return
+        if (!prefs.getBoolean("focus_reminders", true)) return
 
         val appName = try {
             packageManager.getApplicationLabel(
@@ -107,7 +108,7 @@ class BlockerService: AccessibilityService() {
             pkg
         }
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(this, BLOCKER_CHANNEL_ID)
             .setSmallIcon(R.drawable.round_hourglass_disabled_24)
             .setContentTitle(getString(R.string.distraction_blocked))
             .setContentText(getString(R.string.you_were_using, appName))

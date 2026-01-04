@@ -27,6 +27,7 @@ object UsageTracker {
         if (shouldSkipPackage(context, packageName)) return BlockReason.NONE
 
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val limitWarningsEnabled = prefs.getBoolean("limit_warnings", true)
 
         if (RoutineLimits.hasRoutineLimit(packageName)) {
             val routineUsage = getRoutineUsage(packageName, usm)
@@ -34,7 +35,7 @@ object UsageTracker {
 
             Log.d("UsagePolicyEngine", "Routine usage: $routineUsage ms, limit: $limit ms")
 
-            if (routineUsage >= (limit * 0.85) && routineUsage < limit) {
+            if (limitWarningsEnabled && routineUsage >= (limit * 0.85) && routineUsage < limit) {
                 if (!RoutineLimits.hasRoutineReminderBeenSent(packageName)) {
                     val timeRemaining = limit - routineUsage
                     NotificationHelper.showReminderNotification(context, packageName, timeRemaining)
@@ -53,7 +54,7 @@ object UsageTracker {
 
             Log.d("UsagePolicyEngine", "Daily usage: $dailyUsage ms, limit: $limit ms")
 
-            if (dailyUsage >= (limit * 0.85) && dailyUsage < limit) {
+            if (limitWarningsEnabled && dailyUsage >= (limit * 0.85) && dailyUsage < limit) {
                 if (!AppLimits.reminderSentToday(packageName)) {
                     val timeRemaining = limit - dailyUsage
                     NotificationHelper.showReminderNotification(context, packageName, timeRemaining)

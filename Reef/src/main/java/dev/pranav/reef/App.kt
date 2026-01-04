@@ -2,6 +2,7 @@ package dev.pranav.reef
 
 import android.app.Application
 import com.google.android.material.color.DynamicColors
+import dev.pranav.reef.receivers.DailySummaryScheduler
 import dev.pranav.reef.util.AppLimits
 import dev.pranav.reef.util.RoutineLimits
 import dev.pranav.reef.util.Whitelist
@@ -17,5 +18,9 @@ class App: Application() {
         AppLimits.init(this)
         Whitelist.init(this)
         RoutineLimits.loadRoutineLimits()
+
+        if (prefs.getBoolean("daily_summary", false)) {
+            DailySummaryScheduler.scheduleDailySummary(this)
+        }
     }
 }

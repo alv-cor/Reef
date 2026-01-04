@@ -21,22 +21,49 @@ object NotificationHelper {
     fun Context.createNotificationChannel() {
         val importance = NotificationManager.IMPORTANCE_HIGH
         val channel = NotificationChannel(
-            CHANNEL_ID,
+            BLOCKER_CHANNEL_ID,
             getString(R.string.blocker_channel_name),
             importance
         ).apply {
             description = getString(R.string.blocker_channel_description)
             setSound(null, null)
+            setBypassDnd(true)
         }
         val notificationManager: NotificationManager =
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
+
+        val routineChannel = NotificationChannel(
+            ROUTINE_CHANNEL_ID,
+            getString(R.string.routine_channel_name),
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = getString(R.string.routine_channel_description)
+        }
+        notificationManager.createNotificationChannel(routineChannel)
+
+        val reminderChannel = NotificationChannel(
+            REMINDER_CHANNEL_ID,
+            getString(R.string.reminder_channel_name),
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = getString(R.string.reminder_channel_description)
+            setBypassDnd(true)
+        }
+        notificationManager.createNotificationChannel(reminderChannel)
+
+        val focusModeChannel = NotificationChannel(
+            FOCUS_MODE_CHANNEL_ID,
+            getString(R.string.focus_mode_channel_name),
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = getString(R.string.focus_mode_channel_description)
+            setBypassDnd(true)
+        }
+        notificationManager.createNotificationChannel(focusModeChannel)
     }
 
     fun showRoutineActivatedNotification(context: Context, routine: Routine) {
-        val primaryColor =
-            AndroidUtilities.resolveAttributeColor(context, android.R.attr.colorPrimary)
-
         val intent = Intent(context, MainActivity::class.java).apply {
             putExtra("navigate_to_routines", true)
         }
@@ -52,7 +79,7 @@ object NotificationHelper {
             )
         }
 
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, ROUTINE_CHANNEL_ID)
             .setContentTitle(context.getString(R.string.routine_activated))
             .setContentText("${routine.name} - $limitsText")
             .setSmallIcon(R.drawable.round_schedule_24)
@@ -79,7 +106,7 @@ object NotificationHelper {
             context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, ROUTINE_CHANNEL_ID)
             .setContentTitle(context.getString(R.string.routine_deactivated))
             .setContentText(context.getString(R.string.routine_has_ended, routine.name))
             .setSmallIcon(R.drawable.round_schedule_24)
@@ -113,7 +140,7 @@ object NotificationHelper {
             context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, REMINDER_CHANNEL_ID)
             .setContentTitle(context.getString(R.string.time_limit_reminder))
             .setContentText(
                 context.resources.getQuantityString(

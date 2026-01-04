@@ -15,9 +15,9 @@
   </a>
 </div>
 
-Reef is an open-source Android app that helps you take control of your screen time and break free
-from phone addiction. Block distracting apps, set usage limits, and understand your digital habits
-with beautiful Material You design.
+Reef is an open-source Android app designed to help you reclaim your focus and build healthier
+digital habits. Block distracting apps, track your screen time with detailed analytics, and use
+proven productivity techniques like Pomodoro—all wrapped in a beautiful Material You design.
 
 **No ads • No subscriptions • No tracking • Completely free**
 
@@ -47,34 +47,77 @@ with beautiful Material You design.
 
 ## Features
 
-- **Smart App Blocking**: Block distracting apps with robust mechanisms.
-- **Usage Statistics**: Track your screen time and see where your time actually goes with detailed
-  analytics.
-- **Focus Routines**: Schedule automatic app blocking for work hours, bedtime, or study sessions.
-- **Custom Time Limits**: Set daily limits for specific apps to control your usage.
-- **Whitelist System**: Keep essential apps accessible while blocking distractions.
-- **Material 3 Expressive Design**: Beautiful adaptive interface that matches your phone's theme.
-- **Privacy First**: All data stays on your device. No accounts, no cloud sync, zero tracking.
+### Focus Mode
+
+- **Simple Timer**: Set a custom focus duration and block all distractions during your work session
+- **Pomodoro Technique**: Built-in Pomodoro timer with configurable focus, short break, and long
+  break durations
+- **Strict Mode**: Optionally lock yourself in—no pausing or canceling until the timer ends
+- **Auto-Start Options**: Automatically start breaks and next Pomodoro cycles
+- **Do Not Disturb**: Automatically enable DND during focus sessions
+
+### App Blocking & Limits
+
+- **Smart App Blocking**: Accessibility-based blocking sends you home when opening blocked apps
+- **Daily Time Limits**: Set per-app daily usage limits with minute-level granularity
+- **Weekly Usage Charts**: Visualize your app usage patterns with beautiful Vico charts
+- **Whitelist System**: Always allow essential apps like phone, messages, and settings
+
+### Routines
+
+- **Scheduled Blocking**: Create routines that automatically activate at specific times
+- **Weekly Schedules**: Set different app limits for different days of the week
+- **Manual Routines**: One-tap activation for routines when you need them
+- **Per-App Limits in Routines**: Each routine can have its own set of app time limits
+
+### Usage Statistics
+
+- **Detailed Analytics**: See exactly where your screen time goes with daily/weekly breakdowns
+- **Usage History**: Track your usage patterns over time
+- **Daily Summaries**: Get optional daily screen time summary notifications
+
+### Notifications & Alerts
+
+- **Focus Reminders**: Get reminded when you reach for distracting apps during focus
+- **Break Alerts**: Know when your break is over and it's time to get back to work
+- **Limit Warnings**: Receive alerts when you're close to your daily app limits
+- **Customizable Sounds**: Pick your own notification sounds
 
 ---
 
 ## Why Reef?
 
-Unlike other screen time apps with paywalls, subscriptions and limited features, Reef is completely
+Unlike other screen time apps with paywalls, subscriptions, and limited features, Reef is completely
 free and open source. No premium features locked behind payments, no artificial limitations. Built
-with modern Android technologies and Material 3 Expressive design, it provides a beautiful
-experience while helping you build healthier digital habits.
+with modern Android technologies and the latest Material 3 Expressive design language, it provides a
+beautiful experience while helping you build healthier digital habits.
 
 ---
 
 ## Getting Started
 
-1. Download Reef from Github Release
+1. Download Reef from [GitHub Releases](https://github.com/PranavPurwar/Reef/releases)
    or [IzzyOnDroid](https://apt.izzysoft.de/packages/dev.pranav.reef)
-2. Grant the necessary permissions (Usage Access, Accessibility Service)
+2. Grant the necessary permissions:
+    - **Usage Access**: Required to track app usage statistics
+    - **Accessibility Service**: Required to block apps
+    - **Notifications**: For focus reminders and alerts
 3. Select apps you want to block or limit
 4. Set up your focus routines and time limits
-5. Start taking control of your screen time
+5. Start taking control of your screen time!
+
+---
+
+## Permissions Explained
+
+| Permission              | Why It's Needed                                              |
+|-------------------------|--------------------------------------------------------------|
+| Usage Access            | To read app usage statistics and enforce time limits         |
+| Accessibility Service   | To detect when blocked apps are opened and redirect you home |
+| Post Notifications      | To send focus reminders, break alerts, and daily summaries   |
+| Display Over Other Apps | For overlay UI when blocking apps                            |
+| Do Not Disturb Access   | To automatically enable DND during focus sessions            |
+| Exact Alarm             | To schedule routines at precise times                        |
 
 ---
 
@@ -90,9 +133,6 @@ translations on [Weblate](https://hosted.weblate.org/engage/reef/).
 If Reef has been helpful to you, please consider supporting its development with a small donation.
 Every contribution matters.
 
-</b>
-
-
 **Bitcoin (BTC):** `bc1qec5ccz85qn90a6zxnqnes0rx274cv6vw7j5x4g`
 
 **Ethereum (ETH):** `0xD80A8D6E0fa433A8bDFC2D3F325159Db70605816`
@@ -103,8 +143,6 @@ Every contribution matters.
 
 **Monero (XMR):**
 `44w9JtiXxwifyH5CU6Ln1BNViyWNz4z7pEZ4nqbCvUejiK3yEjdyAv6bAofXX2Eh6Fbe3DXJ6eCX6YWKh9SF15fyKBjeJ5H`
-
-</b>
 
 **UPI (India):** `pranavpurwar@fam`
 
@@ -117,7 +155,7 @@ Every contribution matters.
 Reef is licensed under the [MIT License](LICENSE). You are free to use, modify, and distribute this
 software.
 
-```
+```text
 MIT License
 
 Copyright (c) 2023-2025 Pranav Purwar

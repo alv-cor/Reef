@@ -81,4 +81,6 @@ dependencies {
     implementation(libs.vico.compose.m3)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
+
+    implementation(libs.androidx.work.runtime.ktx)
 }

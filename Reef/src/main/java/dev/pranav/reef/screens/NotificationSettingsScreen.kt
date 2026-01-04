@@ -138,7 +138,7 @@ fun NotificationSettingsContent(
                                 dailySummary = !dailySummary
                                 prefs.edit { putBoolean("daily_summary", dailySummary) }
                                 if (dailySummary) {
-                                    DailySummaryScheduler.scheduleNextDailySummary(context)
+                                    DailySummaryScheduler.scheduleDailySummary(context)
                                 } else {
                                     DailySummaryScheduler.cancelDailySummary(context)
                                 }
@@ -161,7 +161,7 @@ fun NotificationSettingsContent(
                                 dailySummary = it
                                 prefs.edit { putBoolean("daily_summary", it) }
                                 if (it) {
-                                    DailySummaryScheduler.scheduleNextDailySummary(context)
+                                    DailySummaryScheduler.scheduleDailySummary(context)
                                 } else {
                                     DailySummaryScheduler.cancelDailySummary(context)
                                 }

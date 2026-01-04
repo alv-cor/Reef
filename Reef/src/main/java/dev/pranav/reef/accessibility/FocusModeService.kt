@@ -21,10 +21,7 @@ import dev.pranav.reef.timer.PomodoroConfig
 import dev.pranav.reef.timer.PomodoroPhase
 import dev.pranav.reef.timer.TimerSessionState
 import dev.pranav.reef.timer.TimerStateManager
-import dev.pranav.reef.util.AndroidUtilities
-import dev.pranav.reef.util.CHANNEL_ID
-import dev.pranav.reef.util.isPrefsInitialized
-import dev.pranav.reef.util.prefs
+import dev.pranav.reef.util.*
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -33,6 +30,7 @@ class FocusModeService: Service() {
 
     companion object {
         private const val NOTIFICATION_ID = 1
+        private const val BREAK_ALERT_NOTIFICATION_ID = 2
         const val ACTION_TIMER_UPDATED = "dev.pranav.reef.TIMER_UPDATED"
         const val ACTION_PAUSE = "dev.pranav.reef.PAUSE_TIMER"
         const val ACTION_RESUME = "dev.pranav.reef.RESUME_TIMER"
@@ -283,6 +281,9 @@ class FocusModeService: Service() {
 
         if (nextPhase.phase == PomodoroPhase.FOCUS) {
             enableDNDIfNeeded()
+            if (prefs.getBoolean("break_alerts", true)) {
+                showBreakEndedNotification()
+            }
         } else {
             restoreDND()
         }
@@ -380,7 +381,7 @@ class FocusModeService: Service() {
                 this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
 
-            notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
+            notificationBuilder = NotificationCompat.Builder(this, FOCUS_MODE_CHANNEL_ID)
                 .setContentIntent(pendingIntent)
                 .setSmallIcon(R.drawable.ic_launcher_monochrome)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -485,6 +486,18 @@ class FocusModeService: Service() {
                 previousInterruptionFilter = null
             }
         }
+    }
+
+    private fun showBreakEndedNotification() {
+        val notification = NotificationCompat.Builder(this, BLOCKER_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setContentTitle(getString(R.string.break_ended_title))
+            .setContentText(getString(R.string.break_ended_message))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        notificationManager.notify(BREAK_ALERT_NOTIFICATION_ID, notification)
     }
 
     override fun onDestroy() {
