@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.twotone.PlayArrow
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.pranav.reef.R
 import dev.pranav.reef.ui.Typography
+import dev.pranav.reef.ui.Typography.DMSerif
 import dev.pranav.reef.util.prefs
 
 sealed interface TimerConfig {
@@ -716,14 +718,14 @@ fun RunningTimerView(
                 color = if (isBreak) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 8.dp),
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Serif,
+                fontFamily = FontFamily.SansSerif,
             )
 
             Text(
                 text = timeLeft,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                fontFamily = FontFamily.SansSerif,
+                fontFamily = DMSerif,
                 fontSize = 88.sp,
                 color = if (isBreak) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface
             )
@@ -841,9 +843,11 @@ fun RunningTimerActions(
             shapes = ButtonDefaults.shapes(shape = ButtonDefaults.elevatedShape),
             modifier = Modifier.size(60.dp)
         ) {
-            Text(
-                text = "↻",
-                style = MaterialTheme.typography.headlineSmall
+            Icon(
+                modifier = Modifier
+                    .fillMaxSize(),
+                imageVector = Icons.Filled.Replay,
+                contentDescription = stringResource(R.string.reset)
             )
         }
     }

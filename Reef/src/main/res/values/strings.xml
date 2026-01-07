@@ -114,6 +114,8 @@
     <string name="auto_start_focus_description">Automatically start focus when break ends</string>
     <string name="transition_sound">Transition Sound</string>
     <string name="transition_sound_description">Play sound between phases</string>
+    <string name="transition_vibration">Transition Vibration</string>
+    <string name="transition_vibration_description">Vibrate on phase transitions</string>
     <string name="select_sound">Select Sound</string>
     <string name="select_sound_description">Choose a notification sound</string>
 
@@ -138,6 +140,7 @@
     <string name="delete_routine_confirmation">Are you sure you want to delete \'%1$s\'? This action cannot be undone.</string>
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>
+    <string name="reset">Reset</string>
     <string name="remove_app_limit">Remove app limit</string>
     <string name="ok">OK</string>
     <string name="select_app">Select App</string>
@@ -269,6 +272,9 @@
     <!-- Focus Mode Service strings -->
     <string name="notification_pause">Pause</string>
     <string name="notification_resume">Resume</string>
+    <string name="focus_session_complete">Focus Session Complete</string>
+    <string name="focus_session_complete_message">Well done! You have completed your focus session.</string>
+    <string name="tap_to_start_next_phase">Tap Resume to start</string>
 
     <!-- Blocker Service strings -->
     <string name="app_blocked">App blocked</string>

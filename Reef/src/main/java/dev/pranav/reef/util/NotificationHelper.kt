@@ -55,7 +55,7 @@ object NotificationHelper {
         val focusModeChannel = NotificationChannel(
             FOCUS_MODE_CHANNEL_ID,
             getString(R.string.focus_mode_channel_name),
-            NotificationManager.IMPORTANCE_DEFAULT
+            NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = getString(R.string.focus_mode_channel_description)
             setBypassDnd(true)

@@ -63,6 +63,10 @@ fun PermissionsScreen(onBackClick: () -> Unit) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 permissions = context.checkAllPermissions()
+
+                if (permissions.all { it.isGranted }) {
+                    onBackClick()
+                }
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

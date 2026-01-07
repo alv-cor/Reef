@@ -31,6 +31,7 @@ class FocusModeService: Service() {
     companion object {
         private const val NOTIFICATION_ID = 1
         private const val BREAK_ALERT_NOTIFICATION_ID = 2
+        private const val COMPLETE_NOTIFICATION_ID = 3
         const val ACTION_TIMER_UPDATED = "dev.pranav.reef.TIMER_UPDATED"
         const val ACTION_PAUSE = "dev.pranav.reef.PAUSE_TIMER"
         const val ACTION_RESUME = "dev.pranav.reef.RESUME_TIMER"
@@ -181,12 +182,17 @@ class FocusModeService: Service() {
             copy(isRunning = true, isPaused = false)
         }
 
-        prefs.edit { putBoolean("focus_mode", true) }
+        val isFocusPhase = state.isPomodoroMode && state.pomodoroPhase == PomodoroPhase.FOCUS
+        prefs.edit { putBoolean("focus_mode", isFocusPhase || !state.isPomodoroMode) }
+
+        if (isFocusPhase || !state.isPomodoroMode) {
+            enableDNDIfNeeded()
+        }
 
         updateNotification(
             title = getNotificationTitle(),
             text = getString(R.string.time_remaining, formatTime(state.timeRemaining)),
-            showPauseButton = true,
+            showPauseButton = !state.isStrictMode,
             timeLeft = state.timeRemaining
         )
         startCountdown(state.timeRemaining)
@@ -249,6 +255,7 @@ class FocusModeService: Service() {
         broadcastTimerUpdate("00:00")
         TimerStateManager.reset()
         restoreDND()
+        showFocusCompleteNotification()
         stopSelf()
     }
 
@@ -263,47 +270,71 @@ class FocusModeService: Service() {
             return
         }
 
+        val shouldAutoStart = when (nextPhase.phase) {
+            PomodoroPhase.FOCUS -> prefs.getBoolean("auto_start_pomodoros", false)
+            PomodoroPhase.SHORT_BREAK, PomodoroPhase.LONG_BREAK -> prefs.getBoolean(
+                "auto_start_breaks",
+                true
+            )
+
+            else -> false
+        }
+
         TimerStateManager.updateState {
             copy(
                 pomodoroPhase = nextPhase.phase,
                 currentCycle = nextPhase.currentCycle,
-                timeRemaining = nextPhase.duration
+                timeRemaining = nextPhase.duration,
+                isRunning = shouldAutoStart,
+                isPaused = !shouldAutoStart
             )
         }
 
         // Store current cycle for persistence
         prefs.edit {
             putInt("pomodoro_current_cycle", nextPhase.currentCycle)
-            putBoolean("focus_mode", nextPhase.phase == PomodoroPhase.FOCUS)
+            putBoolean("focus_mode", shouldAutoStart && nextPhase.phase == PomodoroPhase.FOCUS)
         }
 
         initialDuration = nextPhase.duration
 
         if (nextPhase.phase == PomodoroPhase.FOCUS) {
-            enableDNDIfNeeded()
+            if (shouldAutoStart) {
+                enableDNDIfNeeded()
+            }
             if (prefs.getBoolean("break_alerts", true)) {
                 showBreakEndedNotification()
             }
         } else {
-            restoreDND()
+            if (!shouldAutoStart) {
+                restoreDND()
+            }
         }
 
-        if (prefs.getBoolean("enable_pomodoro_vibration", true)) {
-            AndroidUtilities.vibrate(this, 1000)
-        }
-
-        if (prefs.getBoolean("enable_pomodoro_sound", true)) {
+        if (prefs.getBoolean("pomodoro_sound_enabled", true)) {
+            if (prefs.getBoolean("pomodoro_vibration_enabled", true)) {
+                AndroidUtilities.vibrate(this, 1000)
+            }
             playTransitionSound()
+        }
+
+        val notificationText = if (shouldAutoStart) {
+            getString(R.string.time_remaining, formatTime(nextPhase.duration))
+        } else {
+            getString(R.string.tap_to_start_next_phase)
         }
 
         updateNotification(
             title = getNotificationTitle(),
-            text = getString(R.string.time_remaining, formatTime(nextPhase.duration)),
-            showPauseButton = !state.isStrictMode,
+            text = notificationText,
+            showPauseButton = shouldAutoStart && !state.isStrictMode,
             timeLeft = nextPhase.duration
         )
         broadcastTimerUpdate(formatTime(nextPhase.duration))
-        startCountdown(nextPhase.duration)
+
+        if (shouldAutoStart) {
+            startCountdown(nextPhase.duration)
+        }
     }
 
     private data class NextPhaseResult(
@@ -498,6 +529,38 @@ class FocusModeService: Service() {
             .build()
 
         notificationManager.notify(BREAK_ALERT_NOTIFICATION_ID, notification)
+    }
+
+    private fun showFocusCompleteNotification() {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val soundUri = try {
+            val soundUriString = prefs.getString("pomodoro_sound", null)
+            if (soundUriString.isNullOrEmpty()) {
+                android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
+            } else {
+                soundUriString.toUri()
+            }
+        } catch (e: Exception) {
+            android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION)
+        }
+
+        val notification = NotificationCompat.Builder(this, FOCUS_MODE_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setContentTitle(getString(R.string.focus_session_complete))
+            .setContentText(getString(R.string.focus_session_complete_message))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setSound(soundUri)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        notificationManager.notify(COMPLETE_NOTIFICATION_ID, notification)
     }
 
     override fun onDestroy() {

@@ -62,6 +62,14 @@ fun PomodoroSettingsContent(
             )
         )
     }
+    var vibrationEnabled by remember {
+        mutableStateOf(
+            prefs.getBoolean(
+                "pomodoro_vibration_enabled",
+                true
+            )
+        )
+    }
 
     val numberSettings = listOf(
         NumberSetting(
@@ -317,6 +325,60 @@ fun PomodoroSettingsContent(
                                 tint = if (soundEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(
                                     alpha = 0.5f
                                 )
+                            )
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                    )
+                }
+            }
+
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+            }
+
+            item {
+                Text(
+                    text = stringResource(R.string.vibration),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+
+            item {
+                SettingsCard(index = 0, listSize = 1) {
+                    ListItem(
+                        modifier = Modifier
+                            .clickable {
+                                vibrationEnabled = !vibrationEnabled
+                                prefs.edit {
+                                    putBoolean(
+                                        "pomodoro_vibration_enabled",
+                                        vibrationEnabled
+                                    )
+                                }
+                            }
+                            .padding(4.dp),
+                        headlineContent = {
+                            Text(
+                                text = stringResource(R.string.transition_vibration),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        },
+                        supportingContent = {
+                            Text(
+                                text = stringResource(R.string.transition_vibration_description),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        },
+                        trailingContent = {
+                            Switch(
+                                checked = vibrationEnabled,
+                                onCheckedChange = {
+                                    vibrationEnabled = it
+                                    prefs.edit { putBoolean("pomodoro_vibration_enabled", it) }
+                                }
                             )
                         },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent)

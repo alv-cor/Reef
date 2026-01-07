@@ -281,60 +281,32 @@ class MainActivity: ComponentActivity() {
                             startDestination = Screen.Home,
                             modifier = Modifier.padding(paddingValues),
                             enterTransition = {
-                                val fromNavBar = initialState.destination.hasRoute<Screen.Home>() ||
-                                        initialState.destination.hasRoute<Screen.Usage>() ||
-                                        initialState.destination.hasRoute<Screen.Timer>() ||
-                                        initialState.destination.hasRoute<Screen.Settings>()
-                                val toNavBar = targetState.destination.hasRoute<Screen.Home>() ||
-                                        targetState.destination.hasRoute<Screen.Usage>() ||
-                                        targetState.destination.hasRoute<Screen.Timer>() ||
-                                        targetState.destination.hasRoute<Screen.Settings>()
-
-                                if (fromNavBar && toNavBar) {
-                                    slideInHorizontally(
-                                        initialOffsetX = { it / 4 },
-                                        animationSpec = tween(200)
-                                    )
-                                } else {
-                                    slideInHorizontally(
-                                        initialOffsetX = { it },
-                                        animationSpec = tween(300)
-                                    )
-                                }
+                                fadeIn(animationSpec = tween(250)) +
+                                        slideInHorizontally(
+                                            initialOffsetX = { it / 8 },
+                                            animationSpec = tween(250)
+                                        )
                             },
                             exitTransition = {
-                                val fromNavBar = initialState.destination.hasRoute<Screen.Home>() ||
-                                        initialState.destination.hasRoute<Screen.Usage>() ||
-                                        initialState.destination.hasRoute<Screen.Timer>() ||
-                                        initialState.destination.hasRoute<Screen.Settings>()
-                                val toNavBar = targetState.destination.hasRoute<Screen.Home>() ||
-                                        targetState.destination.hasRoute<Screen.Usage>() ||
-                                        targetState.destination.hasRoute<Screen.Timer>() ||
-                                        targetState.destination.hasRoute<Screen.Settings>()
-
-                                if (fromNavBar && toNavBar) {
-                                    slideOutHorizontally(
-                                        targetOffsetX = { -it / 4 },
-                                        animationSpec = tween(200)
-                                    )
-                                } else {
-                                    slideOutHorizontally(
-                                        targetOffsetX = { -it },
-                                        animationSpec = tween(300)
-                                    )
-                                }
+                                fadeOut(animationSpec = tween(250)) +
+                                        slideOutHorizontally(
+                                            targetOffsetX = { -it / 8 },
+                                            animationSpec = tween(250)
+                                        )
                             },
                             popEnterTransition = {
-                                slideInHorizontally(
-                                    initialOffsetX = { -it / 3 },
-                                    animationSpec = tween(300)
-                                ) + fadeIn(animationSpec = tween(300))
+                                fadeIn(animationSpec = tween(250)) +
+                                        slideInHorizontally(
+                                            initialOffsetX = { -it / 8 },
+                                            animationSpec = tween(250)
+                                        )
                             },
                             popExitTransition = {
-                                slideOutHorizontally(
-                                    targetOffsetX = { it },
-                                    animationSpec = tween(300)
-                                ) + fadeOut(animationSpec = tween(300))
+                                fadeOut(animationSpec = tween(250)) +
+                                        slideOutHorizontally(
+                                            targetOffsetX = { it / 8 },
+                                            animationSpec = tween(250)
+                                        )
                             }
                         ) {
                             composable<Screen.Home> {
@@ -766,70 +738,6 @@ class MainActivity: ComponentActivity() {
                 Whitelist.whitelist(packageName)
             }
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun UnifiedTopBar(
-    currentDestination: androidx.navigation.NavDestination?,
-) {
-    val isHome = currentDestination?.hasRoute<Screen.Home>() == true
-    val isTimer = currentDestination?.hasRoute<Screen.Timer>() == true
-    val isUsage = currentDestination?.hasRoute<Screen.Usage>() == true
-    val isSettings = currentDestination?.hasRoute<Screen.Settings>() == true
-    val isWhitelist = currentDestination?.hasRoute<Screen.Whitelist>() == true
-    val isRoutines = currentDestination?.hasRoute<Screen.Routines>() == true
-
-    val title = when {
-        isHome -> stringResource(R.string.app_name)
-        isTimer -> stringResource(R.string.focus_mode_title)
-        isUsage -> stringResource(R.string.app_usage)
-        isWhitelist -> stringResource(R.string.whitelist_apps_title)
-        isSettings -> stringResource(R.string.settings)
-        isRoutines -> stringResource(R.string.routines)
-        else -> ""
-    }
-
-    MediumTopAppBar(
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (isHome) {
-                    Surface(
-                        modifier = Modifier.size(44.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            Icon(
-                                Icons.Filled.Waves,
-                                contentDescription = null,
-                                modifier = Modifier.size(26.dp),
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-                }
-                Text(
-                    title,
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Transparent
-        )
-    )
-
-    if (isHome) {
-        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 

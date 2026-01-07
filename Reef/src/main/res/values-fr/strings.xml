@@ -6,7 +6,7 @@
     <string name="accessibility_service_description">Nous utilisons le service d\'accessibilité pour bloquer les applis qui sont source de distraction et vous aider à vous concentrer sur votre travail.</string>
     <string name="accessibility_service_app_limit">Nous utilisons le service d\'accessibilité pour forcer les limites de temps par appli.</string>
     <string name="agree">D\'accord</string>
-    <string name="time_remaining">Temps restant : %1$s</string>
+    <string name="time_remaining">Temps restant : %1$s</string>
     <string name="focus_mode">Mode Focus</string>
     <string name="app_usage">Utilisation de l\'appli</string>
     <string name="usage_access">Accès aux infos d\'utilisation</string>
@@ -32,9 +32,9 @@
     <string name="daily">Quotidien</string>
     <string name="weekly">Mensuel</string>
     <string name="manual">Manuel</string>
-    <string name="start_time">Heure de début :</string>
-    <string name="end_time">Heure de fin :</string>
-    <string name="select_days">Choisir les jours :</string>
+    <string name="start_time">Heure de début :</string>
+    <string name="end_time">Heure de fin :</string>
+    <string name="select_days">Choisir les jours :</string>
     <string name="monday">Lundi</string>
     <string name="tuesday">Mardi</string>
     <string name="wednesday">Mercredi</string>
@@ -44,7 +44,7 @@
     <string name="sunday">Dimanche</string>
     <string name="app_limits">Limites des applis</string>
     <string name="add_app">Ajouter une appli</string>
-    <string name="no_app_limits_desc">Aucune limite d\'appli ajoutée pour l\'instant\nAppuyez sur \"Ajouter une appli\" pour définir des limites pour des applis spécifiques</string>
+    <string name="no_app_limits_desc">Aucune limite d\'appli ajoutée pour l\'instant\nAppuyez sur "Ajouter une appli" pour définir des limites pour des applis spécifiques</string>
     <string name="save_routine">Sauvegarder la routine</string>
     <string name="delete_routine">Supprimer la routine</string>
     <string name="routines">Routines</string>
@@ -53,4 +53,6 @@
     <string name="no_routines_yet">Aucune routine pour l\'instant</string>
     <string name="create_routine_text">Créez votre première routine pour automatiser les limites d\'applis basées sur votre programme</string>
     <string name="create_routine">Créer une routine</string>
+    <string name="focus_session_complete">Session Focus terminée</string>
+    <string name="focus_session_complete_message">Bien joué ! Vous avez terminé votre session focus.</string>
 </resources>
