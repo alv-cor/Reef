@@ -80,9 +80,7 @@ object ScreenUsageHelper {
 
                 if (targetPackage != null && event.packageName != targetPackage) {
                     if (currentForegroundPackage == targetPackage &&
-                        (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED ||
-                                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-                                        event.eventType == UsageEvents.Event.ACTIVITY_RESUMED))
+                        event.eventType == UsageEvents.Event.ACTIVITY_RESUMED
                     ) {
                         val duration = event.timeStamp - foregroundStartTime
                         if (duration > 0) {
