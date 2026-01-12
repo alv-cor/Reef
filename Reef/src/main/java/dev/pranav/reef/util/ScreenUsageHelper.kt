@@ -66,12 +66,14 @@ object ScreenUsageHelper {
                 usageEvents.getNextEvent(event)
 
                 if (event.timeStamp < start) {
-                    if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED ||
-                        (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-                                event.eventType == UsageEvents.Event.ACTIVITY_RESUMED)
-                    ) {
-                        currentForegroundPackage = event.packageName
-                        foregroundStartTime = start
+                    when (event.eventType) {
+                        UsageEvents.Event.ACTIVITY_RESUMED -> {
+                            currentForegroundPackage = event.packageName
+                            foregroundStartTime = start
+                        }
+                        UsageEvents.Event.SCREEN_NON_INTERACTIVE -> {
+                            currentForegroundPackage = null
+                        }
                     }
                     continue
                 }
