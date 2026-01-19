@@ -12,6 +12,8 @@ import dev.pranav.reef.util.prefs
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 
 /**
@@ -155,7 +157,7 @@ object Routines {
 
         val newSession = ActiveSession(
             routineId = routine.id,
-            startTime = System.currentTimeMillis(),
+            startTime = LocalDate.now().atTime(routine.schedule.time).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),,
             limits = routine.limits.associate { it.packageName to it.limitMinutes * 60_000L }
         )
         sessions.add(newSession)
