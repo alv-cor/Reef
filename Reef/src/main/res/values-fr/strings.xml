@@ -4,7 +4,6 @@
     <string name="app_description">Reef est une appli open-source de productivité imaginée pour vous aider à réduire votre temps d\'écran et améliorer votre productivité.</string>
     <string name="accessibility_service">Service d\'Accessibilité</string>
     <string name="accessibility_service_description">Nous utilisons le service d\'accessibilité pour bloquer les applis qui sont source de distraction et vous aider à vous concentrer sur votre travail.</string>
-    <string name="accessibility_service_app_limit">Nous utilisons le service d\'accessibilité pour forcer les limites de temps par appli.</string>
     <string name="agree">D\'accord</string>
     <string name="time_remaining">Temps restant : %1$s</string>
     <string name="focus_mode">Mode Focus</string>
@@ -20,7 +19,6 @@
     <string name="exact_alarm_permission">Programmer des alarmes précises</string>
     <string name="exact_alarm_permission_description">Autorisez Reef à programmer des alarmes précises pour les routines. Cela garantit que vos routines de blocage d\'applications démarrent et s\'arrêtent exactement aux heures que vous avez définies.</string>
     <string name="whitelist_apps">Mettre des applis sur liste blanche</string>
-    <string name="set_limit">Définir la limite</string>
     <string name="remove_limit">Retirer la limite</string>
     <string name="daily_usage_limit">Limite d\'utilisation quotidienne</string>
     <string name="app_icon">Icône de l\'appli</string>

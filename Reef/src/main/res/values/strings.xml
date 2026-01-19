@@ -4,12 +4,10 @@
     <string name="app_description">Reef is an open source productivity app designed to help you reduce your screen time and improve your productivity.</string>
     <string name="accessibility_service">Accessibility Service</string>
     <string name="accessibility_service_description">We use accessibility service to block distracting apps and help you focus on work.</string>
-    <string name="accessibility_service_app_limit">We use accessibility service to enforce per-app screen time limits.</string>
     <string name="agree">Agree</string>
     <string name="time_remaining">Time Remaining: %1$s</string>
     <string name="focus_mode">Focus Mode</string>
     <string name="app_usage">App Usage</string>
-    <string name="app_usage_desc">Track your screen time</string>
     <string name="usage_access">Usage Access</string>
     <string name="usage_access_description">We use usage access to track your app usage, no data is shared or collected.</string>
     <string name="app_usage_statistics">App Usage Statistics</string>
@@ -22,23 +20,17 @@
     <string name="exact_alarm_permission_description">Allow Reef to schedule exact alarms for routines. This ensures your app blocking routines start and stop at the exact times you set.</string>
 
     <string name="whitelist_apps">Whitelist apps</string>
-    <string name="whitelist_apps_desc">Select apps to exclude from focus mode</string>
     <plurals name="whitelisted_apps">
         <item quantity="one">%1$s app allowed</item>
         <item quantity="other">%1$s apps allowed</item>
     </plurals>
 
 
-    <string name="set_limit">Set Limit</string>
     <string name="remove_limit">Remove Limit</string>
     <string name="daily_usage_limit">Daily Usage Limit</string>
     <string name="app_icon">App Icon</string>
-    <string name="avg_daily">Avg. Daily</string>
-    <string name="peak_usage">Peak Usage</string>
-    <string name="weekly_overview">Weekly</string>
 
     <string name="routines">Routines</string>
-    <string name="routines_desc">Schedule focus sessions</string>
 
     <string name="no_routines">No routines</string>
     <string name="routine_icon">Routine icon</string>
@@ -72,7 +64,6 @@
     <string name="back">Back</string>
     <string name="next">Next</string>
     <string name="get_started">Get Started</string>
-    <string name="manage_focus">Manage Your Focus</string>
     <string name="settings">Settings</string>
 
     <string name="join_community">Join the Community</string>
@@ -90,27 +81,15 @@
     <string name="pomodoro">Pomodoro</string>
     <string name="pomodoro_subtitle">Configure focus sessions and breaks</string>
     <string name="app_blocking">App Blocking</string>
-    <string name="app_blocking_subtitle">Configure blocked apps in main screen</string>
     <string name="about_subtitle">App info and credits</string>
     <string name="pomodoro_settings_title">Pomodoro Settings</string>
-    <string name="pomodoro_settings">Pomodoro Settings</string>
     <string name="durations_section">Durations</string>
-    <string name="durations">Durations</string>
     <string name="focus_duration">Focus Duration</string>
-    <string name="short_break">Short Break</string>
     <string name="short_break_duration">Short Break Duration</string>
-    <string name="long_break">Long Break</string>
     <string name="long_break_duration">Long Break Duration</string>
     <string name="cycles_before_long_break">Cycles Before Long Break</string>
-    <string name="min_suffix">min</string>
-    <string name="cycles_suffix">cycles</string>
-    <string name="notifications_section">Notifications</string>
     <string name="sound">Sound</string>
-    <string name="sound_description">Play sound on phase transitions</string>
-    <string name="choose_sound">Choose Sound</string>
-    <string name="choose_sound_description">Select notification ringtone</string>
     <string name="vibration">Vibration</string>
-    <string name="vibration_description">Vibrate on phase transitions</string>
     <string name="select_transition_sound">Select Transition Sound</string>
     <string name="automation">Automation</string>
     <string name="auto_start_breaks">Auto-start Breaks</string>
@@ -249,8 +228,6 @@
     <string name="foss_label">Free and Open Source Software</string>
 
     <!-- App Usage Screen strings -->
-    <string name="apps_tracked_one">1 app tracked</string>
-    <string name="apps_tracked_multiple">%1$d apps tracked</string>
     <string name="sort">Sort</string>
     <string name="sort_by_time">Sort by time</string>
     <string name="sort_az">Sort A–Z</string>
@@ -272,7 +249,6 @@
     <string name="grant">Grant</string>
 
     <!-- Timer Controls strings -->
-    <string name="stop">Stop</string>
 
     <!-- Focus Mode Service strings -->
     <string name="notification_pause">Pause</string>
