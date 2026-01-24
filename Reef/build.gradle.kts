@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "dev.pranav.reef"
-        minSdk = 36
+        minSdk = 33
         targetSdk = 36
         versionCode = 304
         versionName = "3.0.4"
