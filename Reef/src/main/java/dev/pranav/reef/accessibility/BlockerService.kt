@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.os.Build
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import androidx.core.app.NotificationCompat
@@ -48,11 +47,7 @@ class BlockerService: AccessibilityService() {
         }
 
         val filter = IntentFilter(Routines.ACTION_CHANGED)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(routineChangeReceiver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(routineChangeReceiver, filter)
-        }
+        registerReceiver(routineChangeReceiver, filter, RECEIVER_NOT_EXPORTED)
 
         scheduleWatcher(this)
     }
