@@ -29,19 +29,27 @@ object ScreenUsageHelper {
         end: Long,
         targetPackage: String? = null
     ): Map<String, Long> {
+        fun Map<*, Long>.totalTime(): Long = values.sum()
+        val ONE_DAY_MS = 24 * 60 * 60 * 1000L
+
         try {
-            val eventBasedUsage =
+            var usage =
                 calculateUsageFromEvents(usageStatsManager, start, end, targetPackage)
 
-            if (eventBasedUsage.isEmpty()) {
-                Log.w(TAG, "Event-based tracking returned no data, using UsageStats fallback")
-                return calculateUsageFromStats(usageStatsManager, start, end, targetPackage)
+            if (!usage.isEmpty() && usage.totalTime() <= ONE_DAY_MS) {
+                return usage
             }
 
-            return eventBasedUsage
+            usage = calculateUsageFromStats(usageStatsManager, start, end, targetPackage)
+
+            if (usage.totalTime() <= ONE_DAY_MS) {
+                return usage
+            }
+
+            return emptyMap()
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching usage", e)
-            return calculateUsageFromStats(usageStatsManager, start, end, targetPackage)
+            return emptyMap()
         }
     }
 
@@ -133,11 +141,7 @@ object ScreenUsageHelper {
 
             stats?.forEach { usageStat ->
                 if (targetPackage == null || usageStat.packageName == targetPackage) {
-                    val totalTime = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        usageStat.totalTimeVisible
-                    } else {
-                        usageStat.totalTimeInForeground
-                    }
+                    val totalTime = usageStat.totalTimeVisible
 
                     if (totalTime > 0) {
                         usageMap[usageStat.packageName] = totalTime
