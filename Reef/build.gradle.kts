@@ -14,8 +14,8 @@ android {
         applicationId = "dev.pranav.reef"
         minSdk = 33
         targetSdk = 36
-        versionCode = 304
-        versionName = "3.0.4"
+        versionCode = 305
+        versionName = "3.0.5"
     }
 
     viewBinding.enable = true
