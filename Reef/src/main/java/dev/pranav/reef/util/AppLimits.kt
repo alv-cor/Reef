@@ -138,10 +138,6 @@ object Whitelist {
         sharedPreferences.edit { putBoolean(packageName, false) }
     }
 
-    fun getWhitelistedCount(): Int {
-        return sharedPreferences.all.count { it.value == true }
-    }
-
     fun getWhitelistedLaunchableCount(launcherApps: android.content.pm.LauncherApps): Int {
         val launchablePackages =
             launcherApps.getActivityList(null, android.os.Process.myUserHandle())
@@ -225,5 +221,11 @@ object Whitelist {
         "com.motorola.dynamicvolume",
         "com.motorola.camera3",
         "com.motorola.dolby.dolbyui",
+
+        // LineageOS apps
+        "com.android.deskclock",
+        "com.android.dialer",
+        "com.android.messaging",
+        "com.android.installer"
     )
 }

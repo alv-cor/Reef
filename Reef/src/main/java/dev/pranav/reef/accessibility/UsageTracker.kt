@@ -16,10 +16,6 @@ object UsageTracker {
         ROUTINE_LIMIT
     }
 
-    fun shouldBlock(context: Context, packageName: String): Boolean {
-        return checkBlockReason(context, packageName) != BlockReason.NONE
-    }
-
     fun checkBlockReason(context: Context, packageName: String): BlockReason {
         if (Whitelist.isWhitelisted(packageName)) return BlockReason.NONE
         if (shouldSkipPackage(context, packageName)) return BlockReason.NONE
