@@ -195,6 +195,8 @@ class FocusModeService: Service() {
 
         prefs.edit { putBoolean("focus_mode", false) }
 
+        restoreDND()
+
         updateNotification(
             title = getNotificationTitle(),
             text = formatTime(state.timeRemaining),
