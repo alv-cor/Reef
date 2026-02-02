@@ -494,7 +494,7 @@ fun PomodoroFocusSetup(onStart: (TimerConfig) -> Unit) {
                     label = stringResource(R.string.cycles_label),
                     value = cycles,
                     onValueChange = { cycles = it },
-                    range = 1..10,
+                    range = 1..20,
                     suffix = ""
                 )
             }

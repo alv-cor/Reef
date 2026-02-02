@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Intent
 import android.content.Intent.FLAG_RECEIVER_FOREGROUND
 import android.content.pm.ServiceInfo
+import android.media.AudioAttributes
 import android.os.Build
 import android.os.CountDownTimer
 import android.os.IBinder
@@ -334,10 +335,6 @@ class FocusModeService: Service() {
         initialDuration = nextPhase.duration
 
         if (nextPhase.phase == PomodoroPhase.FOCUS) {
-            if (prefs.getBoolean("pomodoro_sound_enabled", true)) {
-                playTransitionSound()
-            }
-
             if (autoStartNextPhase) {
                 enableDNDIfNeeded()
             }
@@ -349,12 +346,12 @@ class FocusModeService: Service() {
             restoreDND()
         }
 
-        if (prefs.getBoolean("pomodoro_sound_enabled", true)) {
-            playTransitionSound()
-        }
-
         if (prefs.getBoolean("pomodoro_vibration_enabled", true)) {
             AndroidUtilities.vibrate(this, 1000)
+        }
+
+        if (prefs.getBoolean("pomodoro_sound_enabled", true)) {
+            playTransitionSound()
         }
 
         val notificationText = if (autoStartNextPhase) {
@@ -531,6 +528,12 @@ class FocusModeService: Service() {
             }
 
             val ringtone = android.media.RingtoneManager.getRingtone(applicationContext, soundUri)
+
+            ringtone?.audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+
             ringtone?.play()
         } catch (e: Exception) {
             e.printStackTrace()

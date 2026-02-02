@@ -105,7 +105,7 @@ fun PomodoroSettingsContent(
         NumberSetting(
             label = stringResource(R.string.cycles_before_long_break),
             value = cycles,
-            range = 1..10,
+            range = 1..20,
             suffix = "",
             onValueChange = {
                 cycles = it
