@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.CountDownTimer
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
@@ -34,6 +35,7 @@ class FocusModeService: Service() {
         private const val BREAK_ALERT_NOTIFICATION_ID = 2
         private const val COMPLETE_NOTIFICATION_ID = 3
         const val ACTION_TIMER_UPDATED = "dev.pranav.reef.TIMER_UPDATED"
+        const val ACTION_START = "dev.pranav.reef.START_TIMER"
         const val ACTION_PAUSE = "dev.pranav.reef.PAUSE_TIMER"
         const val ACTION_RESUME = "dev.pranav.reef.RESUME_TIMER"
         const val ACTION_RESTART = "dev.pranav.reef.RESTART_TIMER"
@@ -43,7 +45,6 @@ class FocusModeService: Service() {
 
     private val notificationManager by lazy { NotificationManagerCompat.from(this) }
     private val systemNotificationManager by lazy { getSystemService(NOTIFICATION_SERVICE) as NotificationManager }
-
     private var countDownTimer: CountDownTimer? = null
     private var notificationBuilder: NotificationCompat.Builder? = null
     private var previousInterruptionFilter: Int? = null
@@ -79,21 +80,21 @@ class FocusModeService: Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val isFocusActive = prefs.getBoolean("focus_mode", false)
-
-        if (!isFocusActive && intent?.action == null) {
-            stopSelf()
+        if (intent?.action == null) {
             return START_NOT_STICKY
         }
 
-        promoteToForeground()
+        if (intent.action != ACTION_PAUSE) {
+            promoteToForeground()
+        }
 
-        when (intent?.action) {
+        when (intent.action) {
             ACTION_PAUSE -> pauseTimer()
             ACTION_RESUME -> resumeTimer()
             ACTION_RESTART -> restartCurrentPhase()
-            else -> startTimer()
+            ACTION_START -> startTimer()
         }
+
         return START_STICKY
     }
 
@@ -194,6 +195,8 @@ class FocusModeService: Service() {
 
         prefs.edit { putBoolean("focus_mode", false) }
 
+        restoreDND()
+
         updateNotification(
             title = getNotificationTitle(),
             text = formatTime(state.timeRemaining),
@@ -267,10 +270,11 @@ class FocusModeService: Service() {
 
         if (!state.isPomodoroMode) {
             endSession()
-            return
+        } else {
+            transitionPomodoroPhase()
         }
 
-        transitionPomodoroPhase()
+
     }
 
     private fun endSession() {
@@ -294,6 +298,10 @@ class FocusModeService: Service() {
         val nextPhase = calculateNextPhase(state, config)
 
         if (nextPhase.isComplete) {
+            prefs.edit {
+                putBoolean("pomodoro_mode", false)
+                remove("pomodoro_current_cycle")
+            }
             endSession()
             return
         }
@@ -334,16 +342,15 @@ class FocusModeService: Service() {
                 showBreakEndedNotification()
             }
         } else {
-            if (!shouldAutoStart) {
-                restoreDND()
-            }
+            restoreDND()
         }
 
         if (prefs.getBoolean("pomodoro_sound_enabled", true)) {
-            if (prefs.getBoolean("pomodoro_vibration_enabled", true)) {
-                AndroidUtilities.vibrate(this, 1000)
-            }
             playTransitionSound()
+        }
+
+        if (prefs.getBoolean("pomodoro_vibration_enabled", true)) {
+            AndroidUtilities.vibrate(this, 1000)
         }
 
         val notificationText = if (shouldAutoStart) {
