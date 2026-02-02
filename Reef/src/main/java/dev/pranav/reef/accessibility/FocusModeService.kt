@@ -347,13 +347,14 @@ class FocusModeService: Service() {
             }
         } else {
             restoreDND()
-            if (prefs.getBoolean("pomodoro_sound_enabled", true)) {
-                playTransitionSound()
-            }
+        }
+
+        if (prefs.getBoolean("pomodoro_sound_enabled", true)) {
+            playTransitionSound()
         }
 
         if (prefs.getBoolean("pomodoro_vibration_enabled", true)) {
-            AndroidUtilities.vibrate(this, 1500)
+            AndroidUtilities.vibrate(this, 1000)
         }
 
         val notificationText = if (autoStartNextPhase) {
