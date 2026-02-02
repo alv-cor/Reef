@@ -11,7 +11,6 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.CountDownTimer
 import android.os.IBinder
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
@@ -306,7 +305,7 @@ class FocusModeService: Service() {
             return
         }
 
-        val shouldAutoStart = when (nextPhase.phase) {
+        val autoStartNextPhase = when (nextPhase.phase) {
             PomodoroPhase.FOCUS -> prefs.getBoolean("auto_start_pomodoros", false)
             PomodoroPhase.SHORT_BREAK, PomodoroPhase.LONG_BREAK -> prefs.getBoolean(
                 "auto_start_breaks",
@@ -321,39 +320,43 @@ class FocusModeService: Service() {
                 pomodoroPhase = nextPhase.phase,
                 currentCycle = nextPhase.currentCycle,
                 timeRemaining = nextPhase.duration,
-                isRunning = shouldAutoStart,
-                isPaused = !shouldAutoStart
+                isRunning = autoStartNextPhase,
+                isPaused = !autoStartNextPhase
             )
         }
 
         // Store current cycle for persistence
         prefs.edit {
             putInt("pomodoro_current_cycle", nextPhase.currentCycle)
-            putBoolean("focus_mode", shouldAutoStart && nextPhase.phase == PomodoroPhase.FOCUS)
-        }
-
-        if (prefs.getBoolean("pomodoro_sound_enabled", true)) {
-            playTransitionSound()
-        }
-
-        if (prefs.getBoolean("pomodoro_vibration_enabled", true)) {
-            AndroidUtilities.vibrate(this, 2500)
+            putBoolean("focus_mode", autoStartNextPhase && nextPhase.phase == PomodoroPhase.FOCUS)
         }
 
         initialDuration = nextPhase.duration
 
         if (nextPhase.phase == PomodoroPhase.FOCUS) {
-            if (shouldAutoStart) {
+            if (prefs.getBoolean("pomodoro_sound_enabled", true)) {
+                playTransitionSound()
+            }
+
+            if (autoStartNextPhase) {
                 enableDNDIfNeeded()
             }
+
             if (prefs.getBoolean("break_alerts", true)) {
                 showBreakEndedNotification()
             }
         } else {
             restoreDND()
+            if (prefs.getBoolean("pomodoro_sound_enabled", true)) {
+                playTransitionSound()
+            }
         }
 
-        val notificationText = if (shouldAutoStart) {
+        if (prefs.getBoolean("pomodoro_vibration_enabled", true)) {
+            AndroidUtilities.vibrate(this, 1500)
+        }
+
+        val notificationText = if (autoStartNextPhase) {
             getString(R.string.time_remaining, formatTime(nextPhase.duration))
         } else {
             getString(R.string.tap_to_start_next_phase)
@@ -362,12 +365,12 @@ class FocusModeService: Service() {
         updateNotification(
             title = getNotificationTitle(),
             text = notificationText,
-            showPauseButton = shouldAutoStart && !state.isStrictMode,
+            showPauseButton = autoStartNextPhase && !state.isStrictMode,
             timeLeft = nextPhase.duration
         )
         broadcastTimerUpdate(formatTime(nextPhase.duration))
 
-        if (shouldAutoStart) {
+        if (autoStartNextPhase) {
             startCountdown(nextPhase.duration)
         }
     }
