@@ -332,6 +332,14 @@ class FocusModeService: Service() {
             putBoolean("focus_mode", shouldAutoStart && nextPhase.phase == PomodoroPhase.FOCUS)
         }
 
+        if (prefs.getBoolean("pomodoro_sound_enabled", true)) {
+            playTransitionSound()
+        }
+
+        if (prefs.getBoolean("pomodoro_vibration_enabled", true)) {
+            AndroidUtilities.vibrate(this, 2500)
+        }
+
         initialDuration = nextPhase.duration
 
         if (nextPhase.phase == PomodoroPhase.FOCUS) {
@@ -343,14 +351,6 @@ class FocusModeService: Service() {
             }
         } else {
             restoreDND()
-        }
-
-        if (prefs.getBoolean("pomodoro_sound_enabled", true)) {
-            playTransitionSound()
-        }
-
-        if (prefs.getBoolean("pomodoro_vibration_enabled", true)) {
-            AndroidUtilities.vibrate(this, 2500)
         }
 
         val notificationText = if (shouldAutoStart) {
