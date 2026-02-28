@@ -635,9 +635,10 @@ fun RunningTimerView(
     onCancel: () -> Unit,
     onRestart: () -> Unit = {}
 ) {
-    val isPomodoroMode = prefs.getBoolean("pomodoro_mode", false)
-    val currentCycle = prefs.getInt("pomodoro_current_cycle", 0)
-    val totalCycles = prefs.getInt("pomodoro_cycles_before_long_break", 4)
+    val state by TimerStateManager.state.collectAsState()
+    val isPomodoroMode = state.isPomodoroMode
+    val currentCycle = state.currentCycle
+    val totalCycles = state.totalCycles
 
     Box(
         modifier = Modifier

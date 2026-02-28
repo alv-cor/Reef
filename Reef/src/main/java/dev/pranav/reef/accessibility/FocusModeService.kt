@@ -597,6 +597,16 @@ class FocusModeService: Service() {
             this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val continueIntent = Intent(this, FocusModeService::class.java).apply {
+            action = ACTION_START
+        }
+        val continuePendingIntent = PendingIntent.getService(
+            this,
+            4,
+            continueIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
         val soundUri = try {
             val soundUriString = prefs.getString("pomodoro_sound", null)
             if (soundUriString.isNullOrEmpty()) {
@@ -616,6 +626,13 @@ class FocusModeService: Service() {
             .setSound(soundUri)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+            .addAction(
+                NotificationCompat.Action.Builder(
+                    0,
+                    getString(R.string.notification_continue),
+                    continuePendingIntent
+                ).build()
+            )
             .build()
 
         notificationManager.notify(COMPLETE_NOTIFICATION_ID, notification)

@@ -56,7 +56,11 @@ fun FocusStatsScreen(
     var offset by remember { mutableIntStateOf(0) }
     var selectedIndex by remember { mutableStateOf<Int?>(null) }
 
+    val today = remember { LocalDate.now() }
+
     val allSessions by FocusStats.sessions.collectAsState()
+
+    val modelProducer = remember { CartesianChartModelProducer() }
 
     val chartData = remember(range, offset, allSessions) {
         when (range) {
@@ -66,13 +70,21 @@ fun FocusStatsScreen(
         }
     }
 
-    val displaySessions = remember(range, offset, selectedIndex, allSessions) {
+    LaunchedEffect(chartData, range) {
+        if (chartData.any { it.second > 0f }) {
+            modelProducer.runTransaction {
+                lineSeries { series(chartData.map { it.second }) }
+            }
+        }
+    }
+
+    val displaySessions = remember(range, offset, selectedIndex, allSessions, today) {
         when {
             range == FocusRange.DAILY -> FocusStats.sessionsForDay(offset)
             selectedIndex == null && range == FocusRange.WEEKLY -> FocusStats.sessionsForWeek(offset)
             selectedIndex == null -> FocusStats.sessionsForMonth(offset)
             range == FocusRange.WEEKLY -> {
-                val day = LocalDate.now().plusWeeks(offset.toLong())
+                val day = today.plusWeeks(offset.toLong())
                     .with(DayOfWeek.MONDAY).plusDays(selectedIndex!!.toLong())
                 val start = day.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
                 val end = day.atTime(LocalTime.MAX).atZone(ZoneId.systemDefault()).toInstant()
@@ -81,7 +93,7 @@ fun FocusStatsScreen(
             }
 
             else -> {
-                val month = YearMonth.now().plusMonths(offset.toLong())
+                val month = YearMonth.from(today).plusMonths(offset.toLong())
                 val weekStart = month.atDay(1).plusDays((selectedIndex!! * 7).toLong())
                 val weekEnd = minOf(weekStart.plusDays(6), month.atEndOfMonth())
                 val start =
@@ -95,16 +107,6 @@ fun FocusStatsScreen(
 
     val totalFocusTime = remember(displaySessions) { displaySessions.sumOf { it.totalFocusTime } }
     val totalBlocks = remember(displaySessions) { displaySessions.sumOf { it.totalBlockEvents } }
-
-    val modelProducer = remember(range) { CartesianChartModelProducer() }
-
-    LaunchedEffect(chartData) {
-        if (chartData.any { it.second > 0f }) {
-            modelProducer.runTransaction {
-                lineSeries { series(chartData.map { it.second }) }
-            }
-        }
-    }
 
     val periodLabel = when {
         range == FocusRange.DAILY -> when (offset) {
@@ -235,7 +237,10 @@ fun FocusStatsScreen(
                                     formatFocusDuration(value.toLong() * 60_000)
                                 },
                                 xValueFormatter = { _, value, _ ->
-                                    chartData.getOrNull(value.toInt())?.first?.take(6) ?: " "
+                                    val label = chartData.getOrNull(value.toInt())?.first?.take(6)
+                                    if (label.isNullOrBlank()) {
+                                        "index_${value.toInt()}"
+                                    } else label
                                 },
                                 dataValues = chartData.map { it.second }
                             )

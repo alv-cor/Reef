@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
-import com.patrykandpatrick.vico.compose.cartesian.data.columnSeries
 import dev.pranav.reef.R
 import org.nsh07.pomodoro.ui.statsScreen.TimeColumnChart
 
@@ -128,6 +127,7 @@ fun AppUsageScreen(
 
                 item {
                     HeroHeader(
+                        viewModel.modelProducer,
                         totalTime = appUsageStats.sumOf { it.totalTime },
                         range = range,
                         weeklyData = weeklyData,
@@ -219,6 +219,7 @@ fun RangeButtonGroup(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun HeroHeader(
+    modelProducer: CartesianChartModelProducer,
     totalTime: Long,
     range: UsageRange,
     weeklyData: List<WeeklyUsageData>,
@@ -230,17 +231,7 @@ private fun HeroHeader(
     onDaySelected: (Int) -> Unit,
     onClearSelection: () -> Unit
 ) {
-    val modelProducer = remember { CartesianChartModelProducer() }
-
     val resources = LocalResources.current
-
-    LaunchedEffect(weeklyData) {
-        if (weeklyData.any { it.totalUsageHours > 0 }) {
-            modelProducer.runTransaction {
-                columnSeries { series(weeklyData.map { (it.totalUsageHours * 60).toLong() }) }
-            }
-        }
-    }
 
     Column(
         Modifier.animateContentSize(

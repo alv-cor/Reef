@@ -277,6 +277,7 @@
     <!-- Focus Mode Service strings -->
     <string name="notification_pause">Pause</string>
     <string name="notification_resume">Resume</string>
+    <string name="notification_continue">Continue</string>
     <string name="focus_session_complete">Focus Session Complete</string>
     <string name="focus_session_complete_message">Well done! You have completed your focus session.</string>
     <string name="tap_to_start_next_phase">Tap Resume to start</string>

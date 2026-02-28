@@ -104,7 +104,6 @@ private fun SessionOverviewCard(session: FocusSession) {
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            // Header row: type + status badge + date
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -169,7 +168,6 @@ private fun SessionOverviewCard(session: FocusSession) {
             HorizontalDivider()
             Spacer(Modifier.height(12.dp))
 
-            // Key stats as two columns
             Row(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.weight(1f),
@@ -305,26 +303,33 @@ private fun PhaseCard(phase: PhaseEntry) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                grouped.forEachIndexed { index, (pkg, events) ->
-                    val itemShape = when {
-                        grouped.size == 1 -> RoundedCornerShape(12.dp)
-                        index == 0 -> RoundedCornerShape(
-                            topStart = 12.dp,
-                            topEnd = 12.dp,
-                            bottomStart = 4.dp,
-                            bottomEnd = 4.dp
-                        )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                ) {
 
-                        index == grouped.lastIndex -> RoundedCornerShape(
-                            topStart = 4.dp,
-                            topEnd = 4.dp,
-                            bottomStart = 12.dp,
-                            bottomEnd = 12.dp
-                        )
+                    grouped.forEachIndexed { index, (pkg, events) ->
+                        val itemShape = when {
+                            grouped.size == 1 -> RoundedCornerShape(12.dp)
+                            index == 0 -> RoundedCornerShape(
+                                topStart = 12.dp,
+                                topEnd = 12.dp,
+                                bottomStart = 4.dp,
+                                bottomEnd = 4.dp
+                            )
 
-                        else -> RoundedCornerShape(4.dp)
+                            index == grouped.lastIndex -> RoundedCornerShape(
+                                topStart = 4.dp,
+                                topEnd = 4.dp,
+                                bottomStart = 12.dp,
+                                bottomEnd = 12.dp
+                            )
+
+                            else -> RoundedCornerShape(4.dp)
+                        }
+                        BlockedAppRow(pkg, events, itemShape)
                     }
-                    BlockedAppRow(pkg, events, itemShape)
                 }
             }
         }
@@ -366,7 +371,7 @@ private fun BlockedAppRow(
 
     Surface(
         shape = shape,
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column {
@@ -440,7 +445,6 @@ private fun BlockedAppRow(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // Timeline dot
                             Box(
                                 modifier = Modifier
                                     .size(6.dp)

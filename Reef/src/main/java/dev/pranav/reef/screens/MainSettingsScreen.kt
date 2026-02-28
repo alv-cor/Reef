@@ -12,7 +12,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -147,70 +146,71 @@ fun MainSettingsContent(
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp))
         }
 
-        item {
-            Text(
-                text = "Developer",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-        }
-
-        item {
-            SettingsCard(index = 0, listSize = 2) {
-                ListItem(
-                    modifier = Modifier
-                        .clickable { showGenerateConfirm = true }
-                        .padding(4.dp),
-                    leadingContent = {
-                        Icon(Icons.Rounded.BugReport, contentDescription = null)
-                    },
-                    headlineContent = {
-                        Text(
-                            "Generate focus sample data",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    },
-                    supportingContent = {
-                        Text(
-                            "Populate 3 months of fake sessions to preview stats",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                )
-            }
-        }
-
-        item {
-            SettingsCard(index = 1, listSize = 2) {
-                ListItem(
-                    modifier = Modifier
-                        .clickable { showClearConfirm = true }
-                        .padding(4.dp),
-                    leadingContent = {
-                        Icon(
-                            Icons.Rounded.BugReport, contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    },
-                    headlineContent = {
-                        Text(
-                            "Clear all focus data", style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    },
-                    supportingContent = {
-                        Text(
-                            "Permanently deletes all recorded focus sessions",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                )
-            }
-        }
+        //
+        //item {
+        //    Text(
+        //        text = "Developer",
+        //        style = MaterialTheme.typography.titleMedium,
+        //        fontWeight = FontWeight.Bold,
+        //        color = MaterialTheme.colorScheme.primary,
+        //        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        //    )
+        //}
+        //
+        //item {
+        //    SettingsCard(index = 0, listSize = 2) {
+        //        ListItem(
+        //            modifier = Modifier
+        //                .clickable { showGenerateConfirm = true }
+        //                .padding(4.dp),
+        //            leadingContent = {
+        //                Icon(Icons.Rounded.BugReport, contentDescription = null)
+        //            },
+        //            headlineContent = {
+        //                Text(
+        //                    "Generate focus sample data",
+        //                    style = MaterialTheme.typography.titleMedium
+        //                )
+        //            },
+        //            supportingContent = {
+        //                Text(
+        //                    "Populate 3 months of fake sessions to preview stats",
+        //                    style = MaterialTheme.typography.bodySmall
+        //                )
+        //            },
+        //            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+        //        )
+        //    }
+        //}
+        //
+        //item {
+        //    SettingsCard(index = 1, listSize = 2) {
+        //        ListItem(
+        //            modifier = Modifier
+        //                .clickable { showClearConfirm = true }
+        //                .padding(4.dp),
+        //            leadingContent = {
+        //                Icon(
+        //                    Icons.Rounded.BugReport, contentDescription = null,
+        //                    tint = MaterialTheme.colorScheme.error
+        //                )
+        //            },
+        //            headlineContent = {
+        //                Text(
+        //                    "Clear all focus data", style = MaterialTheme.typography.titleMedium,
+        //                    color = MaterialTheme.colorScheme.error
+        //                )
+        //            },
+        //            supportingContent = {
+        //                Text(
+        //                    "Permanently deletes all recorded focus sessions",
+        //                    style = MaterialTheme.typography.bodySmall
+        //                )
+        //            },
+        //            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+        //        )
+        //    }
+        //}
 
         item {
             Spacer(modifier = Modifier.height(16.dp))

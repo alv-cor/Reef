@@ -9,6 +9,8 @@ import android.os.Process
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.compose.cartesian.data.columnSeries
 import dev.pranav.reef.util.ScreenUsageHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -40,6 +42,8 @@ class AppUsageViewModel(
     private val packageManager: PackageManager,
     private val packageName: String
 ): ViewModel() {
+
+    val modelProducer = CartesianChartModelProducer()
 
     private val _appUsageStats = mutableStateOf<List<AppUsageStats>>(emptyList())
     val appUsageStats: State<List<AppUsageStats>> = _appUsageStats
@@ -163,6 +167,14 @@ class AppUsageViewModel(
             val weeklyData = generateWeeklyData()
             withContext(Dispatchers.Main) {
                 _weeklyData.value = weeklyData
+
+                if (weeklyData.any { it.totalUsageHours > 0 }) {
+                    modelProducer.runTransaction {
+                        columnSeries {
+                            series(weeklyData.map { (it.totalUsageHours * 60).toLong() })
+                        }
+                    }
+                }
             }
         }
     }
@@ -330,12 +342,12 @@ class AppUsageViewModel(
                 val start = calendar.clone() as Calendar
                 start.set(Calendar.HOUR_OF_DAY, 0)
                 start.set(Calendar.MINUTE, 0)
-                start.set(Calendar.SECOND,0)
+                start.set(Calendar.SECOND, 0)
                 start.set(Calendar.MILLISECOND, 0)
 
                 val end = start.clone() as Calendar
                 end.set(Calendar.HOUR_OF_DAY, 23)
-                end.set(Calendar.MINUTE,59)
+                end.set(Calendar.MINUTE, 59)
                 end.set(Calendar.SECOND, 59)
                 end.set(Calendar.MILLISECOND, 999)
 
@@ -343,7 +355,7 @@ class AppUsageViewModel(
                         context, usageStatsManager,
                         start.timeInMillis,
                         end.timeInMillis
-                    ).values.any { it > 0}
+                    ).values.any { it > 0 }
                 ) {
                     hasData = true
                     break

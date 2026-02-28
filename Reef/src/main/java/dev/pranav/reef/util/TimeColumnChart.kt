@@ -138,7 +138,6 @@ internal fun TimeColumnChart(
     }
 }
 
-
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun TimeLineChart(
@@ -155,10 +154,7 @@ internal fun TimeLineChart(
 
     val areaBrush = remember(primaryColor) {
         Brush.verticalGradient(
-            listOf(
-                primaryColor.copy(alpha = 0.4f),
-                Color.Transparent
-            )
+            listOf(primaryColor.copy(alpha = 0.4f), Color.Transparent)
         )
     }
 
@@ -179,7 +175,8 @@ internal fun TimeLineChart(
                 ),
                 bottomAxis = HorizontalAxis.rememberBottom(
                     guideline = null,
-                    valueFormatter = xValueFormatter
+                    valueFormatter = xValueFormatter,
+                    itemPlacer = remember { HorizontalAxis.ItemPlacer.aligned(spacing = { 1 }) }
                 ),
             ),
             modelProducer = modelProducer,
