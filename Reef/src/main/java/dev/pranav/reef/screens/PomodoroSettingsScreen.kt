@@ -45,12 +45,12 @@ fun PomodoroSettingsContent(
         )
     }
     var cycles by remember { mutableIntStateOf(prefs.getInt("pomodoro_cycles", 4)) }
-    var autoStartBreaks by remember { mutableStateOf(prefs.getBoolean("auto_start_breaks", true)) }
+    var autoStartBreaks by remember { mutableStateOf(prefs.getBoolean("auto_start_breaks", false)) }
     var autoStartPomodoros by remember {
         mutableStateOf(
             prefs.getBoolean(
-                "auto_start_pomodoros",
-                false
+                "auto_start_pomodoro",
+                true
             )
         )
     }
@@ -213,7 +213,7 @@ fun PomodoroSettingsContent(
                                 autoStartPomodoros = !autoStartPomodoros
                                 prefs.edit {
                                     putBoolean(
-                                        "auto_start_pomodoros",
+                                        "auto_start_pomodoro",
                                         autoStartPomodoros
                                     )
                                 }
@@ -236,7 +236,7 @@ fun PomodoroSettingsContent(
                                 checked = autoStartPomodoros,
                                 onCheckedChange = {
                                     autoStartPomodoros = it
-                                    prefs.edit { putBoolean("auto_start_pomodoros", it) }
+                                    prefs.edit { putBoolean("auto_start_pomodoro", it) }
                                 }
                             )
                         },

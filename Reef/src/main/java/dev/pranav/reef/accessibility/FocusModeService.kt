@@ -11,7 +11,6 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.CountDownTimer
 import android.os.IBinder
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
@@ -330,11 +329,12 @@ class FocusModeService: Service() {
         }
 
         val shouldAutoStart = when (nextPhase.phase) {
-            PomodoroPhase.FOCUS -> prefs.getBoolean("auto_start_pomodoros", false)
+            PomodoroPhase.FOCUS -> prefs.getBoolean("auto_start_pomodoro", true)
             PomodoroPhase.SHORT_BREAK, PomodoroPhase.LONG_BREAK -> prefs.getBoolean(
                 "auto_start_breaks",
-                true
+                false
             )
+
             else -> false
         }
 
