@@ -1,5 +1,6 @@
 package dev.pranav.reef.ui.whitelist
 
+import android.Manifest
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.os.Process
@@ -34,11 +35,26 @@ class WhitelistViewModel(
     private fun loadApps() {
         viewModelScope.launch {
             val apps = withContext(Dispatchers.IO) {
-                launcherApps.getActivityList(null, Process.myUserHandle())
-                    .asSequence()
+                val launcherPackages = launcherApps.getActivityList(null, Process.myUserHandle())
                     .distinctBy { it.applicationInfo.packageName }
-                    .map { it.applicationInfo }
-                    .filter { it.packageName != currentPackageName }
+                    .associate { it.applicationInfo.packageName to it.applicationInfo }
+
+                val overlayPackages = packageManager
+                    .getInstalledPackages(PackageManager.GET_PERMISSIONS)
+                    .filter { it.requestedPermissions?.contains(Manifest.permission.SYSTEM_ALERT_WINDOW) == true }
+                    .mapNotNull { pkgInfo ->
+                        runCatching {
+                            packageManager.getApplicationInfo(
+                                pkgInfo.packageName,
+                                0
+                            )
+                        }.getOrNull()
+                    }
+                    .associate { it.packageName to it }
+
+                (launcherPackages + overlayPackages)
+                    .filterKeys { it != currentPackageName }
+                    .values
                     .map { appInfo ->
                         WhitelistedApp(
                             packageName = appInfo.packageName,
@@ -48,7 +64,6 @@ class WhitelistViewModel(
                         )
                     }
                     .sortedBy { it.label }
-                    .toList()
             }
             allApps = apps
             updateFilteredList()
