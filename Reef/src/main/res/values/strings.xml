@@ -168,6 +168,38 @@
 
     <string name="enter_routine_name_error">Please enter a routine name</string>
 
+    <string name="add_group">Add Group</string>
+    <string name="create_group">Create Group</string>
+    <string name="group_name">Group name</string>
+    <string name="group_type">Group type</string>
+    <string name="shared_limit">Shared Limit</string>
+    <string name="individual_limits">Individual Limits</string>
+    <string name="shared_limit_desc">All apps share a total time budget. When cumulative usage exceeds the limit, all apps are blocked.</string>
+    <string name="individual_limit_desc">Each app has its own preset time limit within the group.</string>
+    <string name="group_total_limit">Total time limit</string>
+    <string name="select_apps_label">Select Apps</string>
+    <string name="set_limits_label">Set Limits</string>
+    <string name="app_groups">App Groups</string>
+    <string name="no_app_groups_desc">No groups added yet\nTap \'Add Group\' to create a group with shared or individual limits</string>
+    <string name="remove_group">Remove group</string>
+    <string name="shared_type_label">Shared</string>
+    <string name="individual_type_label">Individual</string>
+    <string name="shared_limit_suffix"> · %1$s shared</string>
+    <string name="individual_limits_suffix"> · individual limits</string>
+
+    <plurals name="apps_selected_count">
+        <item quantity="one">%d app selected</item>
+        <item quantity="other">%d apps selected</item>
+    </plurals>
+    <plurals name="groups_count">
+        <item quantity="one">%d group</item>
+        <item quantity="other">%d groups</item>
+    </plurals>
+    <plurals name="apps_count">
+        <item quantity="one">%d app</item>
+        <item quantity="other">%d apps</item>
+    </plurals>
+
     <!-- Routines Activity strings -->
     <string name="activate_routine">Activate Routine</string>
     <string name="activate_routine_confirmation">Do you want to activate \'%1$s\' now?</string>

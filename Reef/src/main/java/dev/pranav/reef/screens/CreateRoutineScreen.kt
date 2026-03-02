@@ -1,9 +1,9 @@
 package dev.pranav.reef.screens
 
-import android.content.pm.ApplicationInfo
 import android.graphics.drawable.Drawable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -63,9 +64,11 @@ fun CreateRoutineScreen(
     var selectedEndTime by remember { mutableStateOf(LocalTime.of(17, 0)) }
     var selectedDays by remember { mutableStateOf(setOf<DayOfWeek>()) }
     var appLimits by remember { mutableStateOf(listOf<Routine.AppLimit>()) }
+    var appGroups by remember { mutableStateOf(listOf<Routine.AppGroup>()) }
     var showTimePicker by remember { mutableStateOf(false) }
     var showEndTimePicker by remember { mutableStateOf(false) }
     var showAppSelector by remember { mutableStateOf(false) }
+    var showGroupCreator by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(routineId) {
@@ -78,6 +81,7 @@ fun CreateRoutineScreen(
                 routine.schedule.endTime?.let { selectedEndTime = it }
                 selectedDays = routine.schedule.daysOfWeek
                 appLimits = routine.limits
+                appGroups = routine.groups
             }
         }
     }
@@ -321,6 +325,59 @@ fun CreateRoutineScreen(
                 }
             }
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.app_groups),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                FilledTonalButton(
+                    onClick = { showGroupCreator = true },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.add_group))
+                }
+            }
+
+            if (appGroups.isEmpty()) {
+                OutlinedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.no_app_groups_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp)
+                    )
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    appGroups.forEach { group ->
+                        AppGroupItem(
+                            group = group,
+                            onRemove = {
+                                appGroups = appGroups.filter { it.id != group.id }
+                            },
+                            context = context
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
@@ -334,6 +391,7 @@ fun CreateRoutineScreen(
                         selectedEndTime = selectedEndTime,
                         selectedDays = selectedDays,
                         appLimits = appLimits,
+                        appGroups = appGroups,
                         onError = { message ->
                             scope.launch {
                                 snackbarHostState.showSnackbar(message)
@@ -397,12 +455,22 @@ fun CreateRoutineScreen(
 
     if (showAppSelector) {
         AppSelectorDialog(
-            onAppSelected = { packageName, appName, limitMinutes ->
+            onAppSelected = { packageName, _, limitMinutes ->
                 appLimits = appLimits.filter { it.packageName != packageName } +
                         Routine.AppLimit(packageName, limitMinutes)
                 showAppSelector = false
             },
             onDismiss = { showAppSelector = false }
+        )
+    }
+
+    if (showGroupCreator) {
+        CreateGroupDialog(
+            onGroupCreated = { group ->
+                appGroups = appGroups + group
+                showGroupCreator = false
+            },
+            onDismiss = { showGroupCreator = false }
         )
     }
 
@@ -511,6 +579,537 @@ private fun AppLimitItem(
     }
 }
 
+@Composable
+private fun AppGroupItem(
+    group: Routine.AppGroup,
+    onRemove: () -> Unit,
+    context: android.content.Context
+) {
+    val typeLabel = stringResource(
+        if (group.type == Routine.AppGroup.GroupType.SHARED) R.string.shared_type_label
+        else R.string.individual_type_label
+    )
+    val appsCount =
+        pluralStringResource(R.plurals.apps_count, group.packageNames.size, group.packageNames.size)
+    val limitSuffix = if (group.type == Routine.AppGroup.GroupType.SHARED) {
+        stringResource(
+            R.string.shared_limit_suffix,
+            formatLimitTime(group.sharedLimitMinutes, context)
+        )
+    } else {
+        stringResource(R.string.individual_limits_suffix)
+    }
+
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Icon(
+                    Icons.Outlined.Layers,
+                    contentDescription = null,
+                    modifier = Modifier.padding(12.dp),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = group.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "$typeLabel · $appsCount$limitSuffix",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            IconButton(
+                onClick = onRemove,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = stringResource(R.string.remove_group),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun CreateGroupDialog(
+    onGroupCreated: (Routine.AppGroup) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+
+    var step by remember { mutableIntStateOf(0) }
+    var groupName by remember { mutableStateOf("") }
+    var groupType by remember { mutableStateOf(Routine.AppGroup.GroupType.SHARED) }
+    var sharedLimitMinutes by remember { mutableIntStateOf(30) }
+    var selectedPackages by remember { mutableStateOf(setOf<String>()) }
+    var individualLimits by remember { mutableStateOf(mapOf<String, Int>()) }
+    var limitDialogForPackage by remember { mutableStateOf<String?>(null) }
+
+    var allApps by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredApps = remember(allApps, searchQuery) {
+        if (searchQuery.isBlank()) allApps
+        else allApps.filter { it.second.contains(searchQuery, ignoreCase = true) }
+    }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            allApps = loadAccessibleApps(context)
+            isLoading = false
+        }
+    }
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            when (step) {
+                0 -> GroupConfigStep(
+                    groupName = groupName,
+                    onGroupNameChange = { groupName = it },
+                    groupType = groupType,
+                    onGroupTypeChange = { groupType = it },
+                    sharedLimitMinutes = sharedLimitMinutes,
+                    onSharedLimitChange = { sharedLimitMinutes = it },
+                    onNext = { step = 1 }
+                )
+
+                1 -> AppSelectStep(
+                    isLoading = isLoading,
+                    filteredApps = filteredApps,
+                    selectedPackages = selectedPackages,
+                    onTogglePackage = { pkg ->
+                        selectedPackages = if (pkg in selectedPackages)
+                            selectedPackages - pkg
+                        else
+                            selectedPackages + pkg
+                    },
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { searchQuery = it },
+                    groupType = groupType,
+                    onBack = { step = 0 },
+                    onNext = {
+                        if (groupType == Routine.AppGroup.GroupType.SHARED) {
+                            onGroupCreated(
+                                Routine.AppGroup(
+                                    id = UUID.randomUUID().toString(),
+                                    name = groupName,
+                                    type = Routine.AppGroup.GroupType.SHARED,
+                                    packageNames = selectedPackages.toList(),
+                                    sharedLimitMinutes = sharedLimitMinutes
+                                )
+                            )
+                        } else {
+                            individualLimits = selectedPackages.associateWith { 30 }
+                            step = 2
+                        }
+                    }
+                )
+
+                2 -> IndividualLimitsStep(
+                    selectedPackages = selectedPackages.toList(),
+                    allApps = allApps,
+                    individualLimits = individualLimits,
+                    onLimitChange = { pkg, minutes ->
+                        individualLimits = individualLimits + (pkg to minutes)
+                    },
+                    limitDialogForPackage = limitDialogForPackage,
+                    onShowLimitDialog = { limitDialogForPackage = it },
+                    onDismissLimitDialog = { limitDialogForPackage = null },
+                    onBack = { step = 1 },
+                    onCreateGroup = {
+                        onGroupCreated(
+                            Routine.AppGroup(
+                                id = UUID.randomUUID().toString(),
+                                name = groupName,
+                                type = Routine.AppGroup.GroupType.INDIVIDUAL,
+                                packageNames = selectedPackages.toList(),
+                                individualLimits = individualLimits
+                            )
+                        )
+                    },
+                    context = context
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun GroupConfigStep(
+    groupName: String,
+    onGroupNameChange: (String) -> Unit,
+    groupType: Routine.AppGroup.GroupType,
+    onGroupTypeChange: (Routine.AppGroup.GroupType) -> Unit,
+    sharedLimitMinutes: Int,
+    onSharedLimitChange: (Int) -> Unit,
+    onNext: () -> Unit
+) {
+    Text(
+        text = stringResource(R.string.create_group),
+        style = MaterialTheme.typography.headlineSmall,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center
+    )
+
+    OutlinedTextField(
+        value = groupName,
+        onValueChange = onGroupNameChange,
+        label = { Text(stringResource(R.string.group_name)) },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        shape = RoundedCornerShape(16.dp)
+    )
+
+    Text(
+        text = stringResource(R.string.group_type),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)
+    ) {
+        ToggleButton(
+            checked = groupType == Routine.AppGroup.GroupType.SHARED,
+            onCheckedChange = { onGroupTypeChange(Routine.AppGroup.GroupType.SHARED) },
+            shapes = ButtonGroupDefaults.connectedLeadingButtonShapes(),
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(stringResource(R.string.shared_limit))
+        }
+        ToggleButton(
+            checked = groupType == Routine.AppGroup.GroupType.INDIVIDUAL,
+            onCheckedChange = { onGroupTypeChange(Routine.AppGroup.GroupType.INDIVIDUAL) },
+            shapes = ButtonGroupDefaults.connectedTrailingButtonShapes(),
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(stringResource(R.string.individual_limits))
+        }
+    }
+
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Text(
+            text = stringResource(
+                if (groupType == Routine.AppGroup.GroupType.SHARED) R.string.shared_limit_desc
+                else R.string.individual_limit_desc
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(12.dp)
+        )
+    }
+
+    AnimatedVisibility(visible = groupType == Routine.AppGroup.GroupType.SHARED) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = stringResource(R.string.group_total_limit),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    pluralStringResource(R.plurals.minutes_label, 15, 15) to 15,
+                    pluralStringResource(R.plurals.minutes_label, 30, 30) to 30,
+                    pluralStringResource(R.plurals.hours_label, 1, 1) to 60,
+                    pluralStringResource(R.plurals.hours_label, 2, 2) to 120,
+                    pluralStringResource(R.plurals.hours_label, 3, 3) to 180
+                ).forEach { (label, minutes) ->
+                    FilterChip(
+                        selected = sharedLimitMinutes == minutes,
+                        onClick = { onSharedLimitChange(minutes) },
+                        label = { Text(label) },
+                        leadingIcon = if (sharedLimitMinutes == minutes) {
+                            {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        } else null,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    Button(
+        onClick = onNext,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = groupName.isNotBlank(),
+        shapes = ButtonDefaults.shapes(),
+        contentPadding = PaddingValues(vertical = 16.dp)
+    ) {
+        Text(stringResource(R.string.select_apps_label))
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun AppSelectStep(
+    isLoading: Boolean,
+    filteredApps: List<Pair<String, String>>,
+    selectedPackages: Set<String>,
+    onTogglePackage: (String) -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    groupType: Routine.AppGroup.GroupType,
+    onBack: () -> Unit,
+    onNext: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.back)
+            )
+        }
+        Text(
+            text = stringResource(R.string.select_apps_label),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.weight(1f)
+        )
+    }
+
+    OutlinedTextField(
+        value = searchQuery,
+        onValueChange = onSearchQueryChange,
+        label = { Text(stringResource(R.string.search_apps)) },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        shape = RoundedCornerShape(16.dp),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Text,
+            imeAction = ImeAction.Search
+        )
+    )
+
+    if (isLoading) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.5f)
+        ) {
+            items(filteredApps) { (packageName, appName) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onTogglePackage(packageName) }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Checkbox(
+                        checked = packageName in selectedPackages,
+                        onCheckedChange = { onTogglePackage(packageName) }
+                    )
+                    Text(appName, style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        }
+    }
+
+    if (selectedPackages.isNotEmpty()) {
+        Text(
+            text = pluralStringResource(
+                R.plurals.apps_selected_count,
+                selectedPackages.size,
+                selectedPackages.size
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+
+    Button(
+        onClick = onNext,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = selectedPackages.isNotEmpty(),
+        shapes = ButtonDefaults.shapes(),
+        contentPadding = PaddingValues(vertical = 16.dp)
+    ) {
+        Text(
+            stringResource(
+                if (groupType == Routine.AppGroup.GroupType.SHARED) R.string.create_group
+                else R.string.set_limits_label
+            )
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun IndividualLimitsStep(
+    selectedPackages: List<String>,
+    allApps: List<Pair<String, String>>,
+    individualLimits: Map<String, Int>,
+    onLimitChange: (String, Int) -> Unit,
+    limitDialogForPackage: String?,
+    onShowLimitDialog: (String) -> Unit,
+    onDismissLimitDialog: () -> Unit,
+    onBack: () -> Unit,
+    onCreateGroup: () -> Unit,
+    context: android.content.Context
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.back)
+            )
+        }
+        Text(
+            text = stringResource(R.string.set_limits_label),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.weight(1f)
+        )
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.5f),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        items(selectedPackages) { packageName ->
+            val appName = allApps.find { it.first == packageName }?.second ?: packageName
+            val currentLimit = individualLimits[packageName] ?: 30
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = appName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp)
+                )
+                FilledTonalButton(
+                    onClick = { onShowLimitDialog(packageName) },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(formatLimitTime(currentLimit, context))
+                }
+            }
+        }
+    }
+
+    Button(
+        onClick = onCreateGroup,
+        modifier = Modifier.fillMaxWidth(),
+        shapes = ButtonDefaults.shapes(),
+        contentPadding = PaddingValues(vertical = 16.dp)
+    ) {
+        Text(stringResource(R.string.create_group))
+    }
+
+    if (limitDialogForPackage != null) {
+        val appName =
+            allApps.find { it.first == limitDialogForPackage }?.second ?: limitDialogForPackage
+        AlertDialog(
+            onDismissRequest = onDismissLimitDialog,
+            title = { Text(stringResource(R.string.set_limit_for, appName)) },
+            text = {
+                Column {
+                    listOf(
+                        pluralStringResource(R.plurals.minutes_label, 5, 5) to 5,
+                        pluralStringResource(R.plurals.minutes_label, 15, 15) to 15,
+                        pluralStringResource(R.plurals.minutes_label, 30, 30) to 30,
+                        pluralStringResource(R.plurals.hours_label, 1, 1) to 60,
+                        pluralStringResource(R.plurals.hours_label, 2, 2) to 120,
+                        pluralStringResource(R.plurals.hours_label, 3, 3) to 180
+                    ).forEach { (label, minutes) ->
+                        TextButton(
+                            onClick = {
+                                onLimitChange(limitDialogForPackage, minutes)
+                                onDismissLimitDialog()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = onDismissLimitDialog) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TimePickerDialog(
@@ -570,14 +1169,7 @@ private fun AppSelectorDialog(
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
-            val installedApps = context.packageManager.getInstalledApplications(0)
-                .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
-                .filter { it.packageName != context.packageName }
-                .sortedBy { context.packageManager.getApplicationLabel(it).toString() }
-                .map {
-                    it.packageName to context.packageManager.getApplicationLabel(it).toString()
-                }
-            apps = installedApps
+            apps = loadAccessibleApps(context)
             isLoading = false
         }
     }
@@ -696,6 +1288,31 @@ private fun AppSelectorDialog(
     }
 }
 
+private fun loadAccessibleApps(context: android.content.Context): List<Pair<String, String>> {
+    val pm = context.packageManager
+
+    val launcherPackages = pm.queryIntentActivities(
+        android.content.Intent(android.content.Intent.ACTION_MAIN)
+            .addCategory(android.content.Intent.CATEGORY_LAUNCHER),
+        0
+    ).map { it.activityInfo.packageName }.toSet()
+
+    val overlayPackages = pm.getInstalledPackages(android.content.pm.PackageManager.GET_PERMISSIONS)
+        .filter { pkgInfo ->
+            pkgInfo.requestedPermissions?.contains(android.Manifest.permission.SYSTEM_ALERT_WINDOW) == true
+        }
+        .map { it.packageName }
+        .toSet()
+
+    val accessible = launcherPackages + overlayPackages
+
+    return pm.getInstalledApplications(0)
+        .filter { it.packageName != context.packageName }
+        .filter { it.packageName in accessible }
+        .sortedBy { pm.getApplicationLabel(it).toString() }
+        .map { it.packageName to pm.getApplicationLabel(it).toString() }
+}
+
 private fun formatTime(time: LocalTime): String {
     val formatter = DateTimeFormatter.ofPattern("HH:mm")
     return time.format(formatter)
@@ -718,6 +1335,7 @@ private fun saveRoutine(
     selectedEndTime: LocalTime,
     selectedDays: Set<DayOfWeek>,
     appLimits: List<Routine.AppLimit>,
+    appGroups: List<Routine.AppGroup>,
     onError: (String) -> Unit
 ): Boolean {
     if (name.trim().isEmpty()) {
@@ -744,7 +1362,8 @@ private fun saveRoutine(
         name = name.trim(),
         isEnabled = currentRoutine?.isEnabled ?: true,
         schedule = schedule,
-        limits = appLimits
+        limits = appLimits,
+        groups = appGroups
     )
 
     Routines.save(routine, context)

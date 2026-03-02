@@ -280,6 +280,24 @@ private fun RoutineItem(
                         )
                     }
 
+                    AnimatedVisibility(visible = routine.groups.isNotEmpty()) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Text(
+                                text = pluralStringResource(
+                                    R.plurals.groups_count,
+                                    routine.groups.size,
+                                    routine.groups.size
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
                     AnimatedVisibility(visible = routine.isEnabled) {
                         Surface(
                             shape = RoundedCornerShape(4.dp),

@@ -24,10 +24,17 @@ object Routines {
 
     const val ACTION_CHANGED = "dev.pranav.reef.ROUTINE_CHANGED"
 
+    data class SharedGroupSession(
+        val groupId: String,
+        val packageNames: List<String>,
+        val sharedLimitMs: Long
+    )
+
     data class ActiveSession(
         val routineId: String,
         val startTime: Long,
-        val limits: Map<String, Long>
+        val limits: Map<String, Long>,
+        val sharedGroups: List<SharedGroupSession> = emptyList()
     )
 
     fun getAll(): List<Routine> {
@@ -57,8 +64,29 @@ object Routines {
         val sessionIndex = sessions.indexOfFirst { it.routineId == routine.id }
         if (sessionIndex >= 0) {
             val oldSession = sessions[sessionIndex]
-            val newLimits = routine.limits.associate { it.packageName to it.limitMinutes * 60_000L }
-            sessions[sessionIndex] = oldSession.copy(limits = newLimits)
+
+            val newLimits = mutableMapOf<String, Long>()
+            routine.limits.forEach { newLimits[it.packageName] = it.limitMinutes * 60_000L }
+            routine.groups
+                .filter { it.type == Routine.AppGroup.GroupType.INDIVIDUAL }
+                .forEach { group ->
+                    group.individualLimits.forEach { (pkg, minutes) ->
+                        newLimits[pkg] = minutes * 60_000L
+                    }
+                }
+
+            val newSharedGroups = routine.groups
+                .filter { it.type == Routine.AppGroup.GroupType.SHARED }
+                .map { group ->
+                    SharedGroupSession(
+                        groupId = group.id,
+                        packageNames = group.packageNames,
+                        sharedLimitMs = group.sharedLimitMinutes * 60_000L
+                    )
+                }
+
+            sessions[sessionIndex] =
+                oldSession.copy(limits = newLimits, sharedGroups = newSharedGroups)
             saveActiveSessions(sessions)
             broadcast(context)
         }
@@ -149,20 +177,42 @@ object Routines {
         Log.d(TAG, "Starting session for: ${routine.name}")
 
         val sessions = getActiveSessions().toMutableList()
-
-        // Remove existing session for this routine if any
         sessions.removeAll { it.routineId == routine.id }
+
+        val limits = mutableMapOf<String, Long>()
+        routine.limits.forEach { limits[it.packageName] = it.limitMinutes * 60_000L }
+        routine.groups
+            .filter { it.type == Routine.AppGroup.GroupType.INDIVIDUAL }
+            .forEach { group ->
+                group.individualLimits.forEach { (pkg, minutes) ->
+                    limits[pkg] = minutes * 60_000L
+                }
+            }
+
+        val sharedGroups = routine.groups
+            .filter { it.type == Routine.AppGroup.GroupType.SHARED }
+            .map { group ->
+                SharedGroupSession(
+                    groupId = group.id,
+                    packageNames = group.packageNames,
+                    sharedLimitMs = group.sharedLimitMinutes * 60_000L
+                )
+            }
 
         val newSession = ActiveSession(
             routineId = routine.id,
             startTime = System.currentTimeMillis(),
-            limits = routine.limits.associate { it.packageName to it.limitMinutes * 60_000L }
+            limits = limits,
+            sharedGroups = sharedGroups
         )
         sessions.add(newSession)
 
         saveActiveSessions(sessions)
 
-        Log.d(TAG, "Started session for ${routine.name} with ${routine.limits.size} limits")
+        Log.d(
+            TAG,
+            "Started session for ${routine.name} with ${routine.limits.size} limits and ${sharedGroups.size} shared groups"
+        )
         Log.d(TAG, "Total active sessions: ${sessions.size}")
 
         broadcast(context)
@@ -196,14 +246,31 @@ object Routines {
                         val obj = arr.getJSONObject(it)
                         val limitsJson = obj.getJSONObject("limits")
                         val limits = mutableMapOf<String, Long>()
-                        limitsJson.keys().forEach { key ->
-                            limits[key] = limitsJson.getLong(key)
-                        }
+                        limitsJson.keys().forEach { key -> limits[key] = limitsJson.getLong(key) }
+
+                        val sharedGroups = obj.optJSONArray("sharedGroups")?.let { groupArr ->
+                            (0 until groupArr.length()).mapNotNull { i ->
+                                try {
+                                    val g = groupArr.getJSONObject(i)
+                                    val pkgs = g.getJSONArray("packageNames").let { pkgArr ->
+                                        (0 until pkgArr.length()).map { j -> pkgArr.getString(j) }
+                                    }
+                                    SharedGroupSession(
+                                        groupId = g.getString("groupId"),
+                                        packageNames = pkgs,
+                                        sharedLimitMs = g.getLong("sharedLimitMs")
+                                    )
+                                } catch (_: Exception) {
+                                    null
+                                }
+                            }
+                        } ?: emptyList()
 
                         ActiveSession(
                             routineId = obj.getString("routineId"),
                             startTime = obj.getLong("startTime"),
-                            limits = limits
+                            limits = limits,
+                            sharedGroups = sharedGroups
                         )
                     } catch (_: Exception) {
                         null
@@ -222,8 +289,17 @@ object Routines {
                     put("routineId", session.routineId)
                     put("startTime", session.startTime)
                     put("limits", JSONObject().apply {
-                        session.limits.forEach { (pkg, limit) ->
-                            put(pkg, limit)
+                        session.limits.forEach { (pkg, limit) -> put(pkg, limit) }
+                    })
+                    put("sharedGroups", JSONArray().apply {
+                        session.sharedGroups.forEach { group ->
+                            put(JSONObject().apply {
+                                put("groupId", group.groupId)
+                                put("packageNames", JSONArray().apply {
+                                    group.packageNames.forEach { put(it) }
+                                })
+                                put("sharedLimitMs", group.sharedLimitMs)
+                            })
                         }
                     })
                 })
@@ -239,10 +315,7 @@ object Routines {
     fun getLimitMs(packageName: String): Long? {
         val sessions = getActiveSessions()
 
-        if (sessions.isEmpty()) {
-            //Log.d(TAG, "getLimitMs($packageName): No active sessions")
-            return null
-        }
+        if (sessions.isEmpty()) return null
 
         Log.d(TAG, "getLimitMs($packageName): Checking ${sessions.size} active sessions")
 
@@ -261,13 +334,29 @@ object Routines {
                 return@forEach
             }
 
-            // Check if this session has a limit for this package
-            val limit = session.limits[packageName]
-            if (limit != null) {
-                Log.d(TAG, "  ${routine.name} limits $packageName to ${limit}ms")
+            val individualLimit = session.limits[packageName]
+            if (individualLimit != null) {
+                Log.d(
+                    TAG,
+                    "  ${routine.name} limits $packageName individually to ${individualLimit}ms"
+                )
+                strictestLimit = if (strictestLimit == null) individualLimit else minOf(
+                    strictestLimit!!,
+                    individualLimit
+                )
+            }
 
-                // Take the strictest (lowest) limit
-                strictestLimit = if (strictestLimit == null) limit else minOf(strictestLimit, limit)
+            session.sharedGroups.forEach { group ->
+                if (packageName in group.packageNames) {
+                    Log.d(
+                        TAG,
+                        "  ${routine.name}: $packageName is in shared group ${group.groupId} (limit: ${group.sharedLimitMs}ms)"
+                    )
+                    strictestLimit = if (strictestLimit == null) group.sharedLimitMs else minOf(
+                        strictestLimit!!,
+                        group.sharedLimitMs
+                    )
+                }
             }
         }
 
@@ -286,18 +375,23 @@ object Routines {
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE)
                 as android.app.usage.UsageStatsManager
 
-        // For each session that limits this package, calculate usage since its start
         var maxUsage = 0L
 
         sessions.forEach { session ->
-            if (session.limits.containsKey(packageName)) {
+            val sharedGroup = session.sharedGroups.find { packageName in it.packageNames }
+
+            if (sharedGroup != null) {
+                val groupUsage = sharedGroup.packageNames.sumOf { pkg ->
+                    ScreenUsageHelper.fetchUsageInMs(
+                        usm, session.startTime, System.currentTimeMillis(), pkg
+                    )[pkg] ?: 0L
+                }
+                if (groupUsage > maxUsage) maxUsage = groupUsage
+            } else if (session.limits.containsKey(packageName)) {
                 val usage = ScreenUsageHelper.fetchUsageInMs(
                     usm, session.startTime, System.currentTimeMillis(), packageName
                 )[packageName] ?: 0L
-
-                if (usage > maxUsage) {
-                    maxUsage = usage
-                }
+                if (usage > maxUsage) maxUsage = usage
             }
         }
 
@@ -312,8 +406,17 @@ object Routines {
                     put("routineId", session.routineId)
                     put("startTime", session.startTime)
                     put("limits", JSONObject().apply {
-                        session.limits.forEach { (pkg, limit) ->
-                            put(pkg, limit)
+                        session.limits.forEach { (pkg, limit) -> put(pkg, limit) }
+                    })
+                    put("sharedGroups", JSONArray().apply {
+                        session.sharedGroups.forEach { group ->
+                            put(JSONObject().apply {
+                                put("groupId", group.groupId)
+                                put("packageNames", JSONArray().apply {
+                                    group.packageNames.forEach { put(it) }
+                                })
+                                put("sharedLimitMs", group.sharedLimitMs)
+                            })
                         }
                     })
                 })
@@ -397,12 +500,39 @@ object Routines {
             }
         }
 
+        val groups = json.optJSONArray("groups")?.let { arr ->
+            (0 until arr.length()).mapNotNull { i ->
+                try {
+                    val g = arr.getJSONObject(i)
+                    val pkgs = g.getJSONArray("packageNames").let { pkgArr ->
+                        (0 until pkgArr.length()).map { j -> pkgArr.getString(j) }
+                    }
+                    val indivLimits = g.optJSONObject("individualLimits")?.let { limitsJson ->
+                        val map = mutableMapOf<String, Int>()
+                        limitsJson.keys().forEach { key -> map[key] = limitsJson.getInt(key) }
+                        map.toMap()
+                    } ?: emptyMap()
+                    Routine.AppGroup(
+                        id = g.optString("id", UUID.randomUUID().toString()),
+                        name = g.getString("name"),
+                        type = Routine.AppGroup.GroupType.valueOf(g.getString("type")),
+                        packageNames = pkgs,
+                        sharedLimitMinutes = g.optInt("sharedLimitMinutes", 0),
+                        individualLimits = indivLimits
+                    )
+                } catch (_: Exception) {
+                    null
+                }
+            }
+        } ?: emptyList()
+
         Routine(
             id = json.getString("id"),
             name = json.getString("name"),
             isEnabled = json.getBoolean("isEnabled"),
             schedule = schedule,
-            limits = limits
+            limits = limits,
+            groups = groups
         )
     } catch (_: Exception) {
         null
@@ -420,9 +550,7 @@ object Routines {
             s.timeMinute?.let { put("timeMinute", it) }
             s.endTimeHour?.let { put("endTimeHour", it) }
             s.endTimeMinute?.let { put("endTimeMinute", it) }
-            put("daysOfWeek", JSONArray().apply {
-                s.daysOfWeek.forEach { put(it.name) }
-            })
+            put("daysOfWeek", JSONArray().apply { s.daysOfWeek.forEach { put(it.name) } })
             put("isRecurring", s.isRecurring)
         })
 
@@ -431,6 +559,23 @@ object Routines {
                 put(JSONObject().apply {
                     put("packageName", limit.packageName)
                     put("limitMinutes", limit.limitMinutes)
+                })
+            }
+        })
+
+        put("groups", JSONArray().apply {
+            routine.groups.forEach { group ->
+                put(JSONObject().apply {
+                    put("id", group.id)
+                    put("name", group.name)
+                    put("type", group.type.name)
+                    put(
+                        "packageNames",
+                        JSONArray().apply { group.packageNames.forEach { put(it) } })
+                    put("sharedLimitMinutes", group.sharedLimitMinutes)
+                    put("individualLimits", JSONObject().apply {
+                        group.individualLimits.forEach { (pkg, minutes) -> put(pkg, minutes) }
+                    })
                 })
             }
         })
