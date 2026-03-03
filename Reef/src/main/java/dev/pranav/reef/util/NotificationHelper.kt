@@ -12,117 +12,103 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import dev.pranav.reef.MainActivity
 import dev.pranav.reef.R
-import dev.pranav.reef.data.Routine
+import dev.pranav.reef.services.routines.RoutineSessionManager
 
 object NotificationHelper {
-    private const val ROUTINE_NOTIFICATION_ID = 100
+    const val ROUTINE_STATUS_NOTIFICATION_ID = 5001
     private const val REMINDER_NOTIFICATION_ID = 200
 
     fun Context.createNotificationChannel() {
-        val importance = NotificationManager.IMPORTANCE_HIGH
-        val channel = NotificationChannel(
-            BLOCKER_CHANNEL_ID,
-            getString(R.string.blocker_channel_name),
-            importance
-        ).apply {
-            description = getString(R.string.blocker_channel_description)
-            setSound(null, null)
-            setBypassDnd(true)
-        }
-        val notificationManager: NotificationManager =
+        val notificationManager =
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(channel)
 
-        val routineChannel = NotificationChannel(
-            ROUTINE_CHANNEL_ID,
-            getString(R.string.routine_channel_name),
-            NotificationManager.IMPORTANCE_DEFAULT
-        ).apply {
-            description = getString(R.string.routine_channel_description)
-        }
-        notificationManager.createNotificationChannel(routineChannel)
-
-        val reminderChannel = NotificationChannel(
-            REMINDER_CHANNEL_ID,
-            getString(R.string.reminder_channel_name),
-            NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            description = getString(R.string.reminder_channel_description)
-            setBypassDnd(true)
-        }
-        notificationManager.createNotificationChannel(reminderChannel)
-
-        val focusModeChannel = NotificationChannel(
-            FOCUS_MODE_CHANNEL_ID,
-            getString(R.string.focus_mode_channel_name),
-            NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            description = getString(R.string.focus_mode_channel_description)
-            setBypassDnd(true)
-        }
-        notificationManager.createNotificationChannel(focusModeChannel)
+        notificationManager.createNotificationChannel(
+            NotificationChannel(
+                BLOCKER_CHANNEL_ID,
+                getString(R.string.blocker_channel_name),
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = getString(R.string.blocker_channel_description)
+                setSound(null, null)
+                setBypassDnd(true)
+            }
+        )
+        notificationManager.createNotificationChannel(
+            NotificationChannel(
+                ROUTINE_STATUS_CHANNEL_ID,
+                getString(R.string.routine_channel_name),
+                NotificationManager.IMPORTANCE_MIN
+            ).apply {
+                description = getString(R.string.routine_channel_description)
+                setShowBadge(false)
+                setSound(null, null)
+            }
+        )
+        notificationManager.createNotificationChannel(
+            NotificationChannel(
+                REMINDER_CHANNEL_ID,
+                getString(R.string.reminder_channel_name),
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = getString(R.string.reminder_channel_description)
+                setBypassDnd(true)
+            }
+        )
+        notificationManager.createNotificationChannel(
+            NotificationChannel(
+                FOCUS_MODE_CHANNEL_ID,
+                getString(R.string.focus_mode_channel_name),
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = getString(R.string.focus_mode_channel_description)
+                setBypassDnd(true)
+            }
+        )
     }
 
-    fun showRoutineActivatedNotification(context: Context, routine: Routine) {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra("navigate_to_routines", true)
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+    fun syncRoutineNotification(context: Context) {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val activeNames = RoutineSessionManager.getActiveRoutineNames()
 
-        val limitsText = when (routine.limits.size) {
-            0 -> context.getString(R.string.no_app_limits_applied)
-            else -> context.resources.getQuantityString(
-                R.plurals.app_limits_applied,
-                routine.limits.size,
-                routine.limits.size
-            )
+        if (activeNames.isEmpty()) {
+            manager.cancel(ROUTINE_STATUS_NOTIFICATION_ID)
+            return
         }
-
-        val builder = NotificationCompat.Builder(context, ROUTINE_CHANNEL_ID)
-            .setContentTitle(context.getString(R.string.routine_activated))
-            .setContentText("${routine.name} - $limitsText")
-            .setSmallIcon(R.drawable.round_schedule_24)
-            //.setColor(primaryColor)
-            //.setColorized(true)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
 
         if (ActivityCompat.checkSelfPermission(
                 context,
                 Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            NotificationManagerCompat.from(context).notify(ROUTINE_NOTIFICATION_ID, builder.build())
-        }
-    }
+            ) != PackageManager.PERMISSION_GRANTED
+        ) return
 
-    fun showRoutineDeactivatedNotification(context: Context, routine: Routine) {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra("navigate_to_routines", true)
-        }
         val pendingIntent = PendingIntent.getActivity(
-            context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            context, 0,
+            Intent(context, MainActivity::class.java).apply {
+                putExtra(
+                    "navigate_to_routines",
+                    true
+                )
+            },
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val builder = NotificationCompat.Builder(context, ROUTINE_CHANNEL_ID)
-            .setContentTitle(context.getString(R.string.routine_deactivated))
-            .setContentText(context.getString(R.string.routine_has_ended, routine.name))
-            .setSmallIcon(R.drawable.round_schedule_24)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-
-        if (ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            NotificationManagerCompat.from(context)
-                .notify(ROUTINE_NOTIFICATION_ID + 1, builder.build())
+        val contentText = if (activeNames.size == 1) {
+            context.getString(R.string.routine_active_single, activeNames[0])
+        } else {
+            context.getString(R.string.active_routines_list, activeNames.joinToString(", "))
         }
+
+        val notification = NotificationCompat.Builder(context, ROUTINE_STATUS_CHANNEL_ID)
+            .setSmallIcon(R.drawable.round_schedule_24)
+            .setContentTitle(context.getString(R.string.routines))
+            .setContentText(contentText)
+            .setOngoing(true)
+            .setSilent(true)
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .build()
+
+        manager.notify(ROUTINE_STATUS_NOTIFICATION_ID, notification)
     }
 
     fun showReminderNotification(context: Context, packageName: String, timeRemaining: Long) {

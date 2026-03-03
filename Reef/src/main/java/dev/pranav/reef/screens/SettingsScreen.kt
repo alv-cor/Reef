@@ -2,52 +2,87 @@ package dev.pranav.reef.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.stringResource
+import dev.pranav.reef.R
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsContent(
     onSoundPicker: () -> Unit
 ) {
     var currentScreen by remember { mutableStateOf<SettingsScreenRoute>(SettingsScreenRoute.Main) }
+    val scrollBehavior =
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
-    AnimatedContent(
-        targetState = currentScreen,
-        transitionSpec = {
-            if (targetState != SettingsScreenRoute.Main) {
-                slideInHorizontally(
-                    initialOffsetX = { it },
-                    animationSpec = tween(100)
-                ) + fadeIn(animationSpec = tween(100)) togetherWith
-                        slideOutHorizontally(
-                            targetOffsetX = { -it / 3 },
-                            animationSpec = tween(100)
-                        ) + fadeOut(animationSpec = tween(100))
-            } else {
-                slideInHorizontally(
-                    initialOffsetX = { -it / 3 },
-                    animationSpec = tween(100)
-                ) + fadeIn(animationSpec = tween(100)) togetherWith
-                        slideOutHorizontally(
-                            targetOffsetX = { it },
-                            animationSpec = tween(100)
-                        ) + fadeOut(animationSpec = tween(100))
+    LaunchedEffect(currentScreen) {
+        scrollBehavior.state.heightOffset = 0f
+        scrollBehavior.state.contentOffset = 0f
+    }
+
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = WindowInsets(0),
+        topBar = {
+            AnimatedVisibility(
+                visible = currentScreen == SettingsScreenRoute.Main,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                LargeTopAppBar(
+                    title = { Text(stringResource(R.string.settings)) },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                    scrollBehavior = scrollBehavior
+                )
             }
-        },
-        label = "settings_screen_transition"
-    ) { screen ->
-        when (screen) {
-            SettingsScreenRoute.Main -> MainSettingsContent(
-                onNavigate = { currentScreen = it }
-            )
+        }
+    ) { paddingValues ->
+        AnimatedContent(
+            targetState = currentScreen,
+            transitionSpec = {
+                if (targetState != SettingsScreenRoute.Main) {
+                    slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(100)
+                    ) + fadeIn(animationSpec = tween(100)) togetherWith
+                            slideOutHorizontally(
+                                targetOffsetX = { -it / 3 },
+                                animationSpec = tween(100)
+                            ) + fadeOut(animationSpec = tween(100))
+                } else {
+                    slideInHorizontally(
+                        initialOffsetX = { -it / 3 },
+                        animationSpec = tween(100)
+                    ) + fadeIn(animationSpec = tween(100)) togetherWith
+                            slideOutHorizontally(
+                                targetOffsetX = { it },
+                                animationSpec = tween(100)
+                            ) + fadeOut(animationSpec = tween(100))
+                }
+            },
+            label = "settings_screen_transition"
+        ) { screen ->
+            when (screen) {
+                SettingsScreenRoute.Main -> MainSettingsContent(
+                    contentPadding = paddingValues,
+                    onNavigate = { currentScreen = it }
+                )
 
-            SettingsScreenRoute.Pomodoro -> PomodoroSettingsContent(
-                onBackPressed = { currentScreen = SettingsScreenRoute.Main },
-                onSoundPicker = onSoundPicker
-            )
+                SettingsScreenRoute.Pomodoro -> PomodoroSettingsContent(
+                    onBackPressed = { currentScreen = SettingsScreenRoute.Main },
+                    onSoundPicker = onSoundPicker
+                )
 
-            SettingsScreenRoute.Notifications -> NotificationSettingsContent(
-                onBackPressed = { currentScreen = SettingsScreenRoute.Main }
-            )
+                SettingsScreenRoute.Notifications -> NotificationSettingsContent(
+                    onBackPressed = { currentScreen = SettingsScreenRoute.Main }
+                )
+            }
         }
     }
 }
+

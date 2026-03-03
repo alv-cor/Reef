@@ -361,7 +361,7 @@
     <string name="paused_focus_session">Paused • %1$s</string>
     <string name="in_progress_focus_session">In progress • %1$s</string>
 
-    <string name="no_active_routines">Monitoring routines</string>
+    <string name="routine_active_single">%1$s active</string>
     <string name="active_routines_list">Active: %1$s</string>
 
     <!-- Bottom Navigation -->

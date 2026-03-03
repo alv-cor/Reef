@@ -1,15 +1,12 @@
 package dev.pranav.reef.timer
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.twotone.PlayArrow
@@ -17,6 +14,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -28,7 +27,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import dev.pranav.reef.R
+import dev.pranav.reef.navigation.Screen
 import dev.pranav.reef.ui.Typography.DMSerif
 import dev.pranav.reef.util.prefs
 
@@ -43,8 +45,10 @@ sealed interface TimerConfig {
     ): TimerConfig
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimerContent(
+    navController: NavController,
     isTimerRunning: Boolean,
     isPaused: Boolean,
     currentTimeLeft: String,
@@ -58,31 +62,56 @@ fun TimerContent(
 ) {
     val showRunningView = isTimerRunning || isPaused
 
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        AnimatedContent(
-            targetState = showRunningView,
-            transitionSpec = {
-                fadeIn(animationSpec = tween(300)) togetherWith
-                        fadeOut(animationSpec = tween(300))
-            },
-            label = "timer_state"
-        ) { running ->
-            if (running) {
-                RunningTimerView(
-                    timeLeft = currentTimeLeft,
-                    timerState = currentTimerState,
-                    isPaused = isPaused,
-                    isStrictMode = isStrictMode,
-                    onPause = onPauseTimer,
-                    onResume = onResumeTimer,
-                    onCancel = onCancelTimer,
-                    onRestart = onRestartTimer
-                )
-            } else {
-                FocusTimerSetupView(onStart = onStartTimer)
+    val scrollBehavior =
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = WindowInsets(0),
+        topBar = {
+            LargeTopAppBar(
+                title = {
+                    Text(
+                        stringResource(R.string.focus_mode_title)
+                    )
+                },
+                actions = {
+                    IconButton(onClick = { navController.navigate(Screen.FocusStats) }) {
+                        Icon(
+                            Icons.Outlined.BarChart,
+                            contentDescription = "Focus Stats"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent
+                ),
+                scrollBehavior = scrollBehavior
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .padding(horizontal = 24.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            AnimatedContent(targetState = showRunningView) { running ->
+                if (running) {
+                    RunningTimerView(
+                        timeLeft = currentTimeLeft,
+                        timerState = currentTimerState,
+                        isPaused = isPaused,
+                        isStrictMode = isStrictMode,
+                        onPause = onPauseTimer,
+                        onResume = onResumeTimer,
+                        onCancel = onCancelTimer,
+                        onRestart = onRestartTimer
+                    )
+                } else {
+                    FocusTimerSetupView(onStart = onStartTimer)
+                }
             }
         }
     }
@@ -108,6 +137,7 @@ fun TimerScreen(
         contentAlignment = Alignment.Center
     ) {
         TimerContent(
+            navController = rememberNavController(),
             isTimerRunning = isTimerRunning,
             isPaused = isPaused,
             currentTimeLeft = currentTimeLeft,
@@ -122,20 +152,15 @@ fun TimerScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FocusTimerSetupView(onStart: (TimerConfig) -> Unit) {
     var selectedMode by remember { mutableIntStateOf(0) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Spacer(modifier = Modifier.height(16.dp))
+        FocusModeGroup(selectedMode = selectedMode, onSelectionChange = { selectedMode = it })
 
-        FocusModeGroup(
-            selectedMode = selectedMode,
-            onSelectionChange = { selectedMode = it }
-        )
-
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxWidth()) {
             if (selectedMode == 0) {
                 SimpleFocusSetup(onStart)
             } else {
@@ -194,11 +219,8 @@ fun SimpleFocusSetup(onStart: (TimerConfig) -> Unit) {
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
+            .fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.height(16.dp))
 
@@ -427,9 +449,7 @@ fun PomodoroFocusSetup(onStart: (TimerConfig) -> Unit) {
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState()),
+            .fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.height(16.dp))
@@ -629,8 +649,7 @@ fun RunningTimerView(
 
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+            .fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -784,7 +803,7 @@ fun RunningTimerActions(
     onRestart: () -> Unit = {}
 ) {
     Row(
-        modifier = modifier.padding(horizontal = 24.dp),
+        modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

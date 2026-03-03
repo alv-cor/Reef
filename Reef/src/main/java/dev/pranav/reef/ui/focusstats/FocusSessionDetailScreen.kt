@@ -64,6 +64,7 @@ fun FocusSessionDetailScreen(sessionId: String, onBackPressed: () -> Unit) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0),
         topBar = {
             LargeTopAppBar(
                 title = {

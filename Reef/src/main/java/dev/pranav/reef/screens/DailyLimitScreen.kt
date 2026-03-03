@@ -52,6 +52,7 @@ fun DailyLimitScreen(
 ) {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0),
         containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(

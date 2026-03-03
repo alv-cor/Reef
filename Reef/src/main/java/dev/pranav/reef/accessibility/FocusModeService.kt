@@ -460,7 +460,7 @@ class FocusModeService: Service() {
                     themedContext, android.R.attr.colorPrimary, "#3861d1".toColorInt()
                 )
                 val tertiaryColor = MaterialColors.getColor(
-                    themedContext, com.google.android.material.R.attr.colorTertiary,
+                    themedContext, com.google.android.material.R.attr.colorTertiaryContainer,
                     "#e05583".toColorInt()
                 )
                 for (i in 0 until state.totalCycles * 2) {

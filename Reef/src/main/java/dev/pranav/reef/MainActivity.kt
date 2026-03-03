@@ -17,25 +17,19 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Waves
-import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.BarChart
-import androidx.compose.material.icons.rounded.SelfImprovement
+import androidx.compose.material.icons.rounded.EmojiNature
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -68,7 +62,6 @@ class MainActivity: ComponentActivity() {
             val left = intent.getStringExtra(FocusModeService.EXTRA_TIME_LEFT) ?: "00:00"
             currentTimeLeft = left
             currentTimerState = intent.getStringExtra(FocusModeService.EXTRA_TIMER_STATE) ?: "FOCUS"
-
             if (left == "00:00" && !prefs.getBoolean("pomodoro_mode", false)) {
                 AndroidUtilities.vibrate(context, 500)
             }
@@ -98,7 +91,6 @@ class MainActivity: ComponentActivity() {
     private val usageStatsManager by lazy { getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager }
     private val launcherApps by lazy { getSystemService(LAUNCHER_APPS_SERVICE) as LauncherApps }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -106,7 +98,6 @@ class MainActivity: ComponentActivity() {
         addExceptions()
 
         shouldNavigateToTimer = intent?.getBooleanExtra("navigate_to_timer", false) == true
-
         val shouldNavigateToRoutines =
             intent?.getBooleanExtra("navigate_to_routines", false) == true
 
@@ -118,10 +109,7 @@ class MainActivity: ComponentActivity() {
             )
         } else {
             @Suppress("UnspecifiedRegisterReceiverFlag")
-            registerReceiver(
-                timerReceiver,
-                IntentFilter("dev.pranav.reef.TIMER_UPDATED")
-            )
+            registerReceiver(timerReceiver, IntentFilter("dev.pranav.reef.TIMER_UPDATED"))
         }
 
         setContent {
@@ -130,11 +118,8 @@ class MainActivity: ComponentActivity() {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentDestination = navBackStackEntry?.destination
 
-            var slideProgress by remember { mutableFloatStateOf(0f) }
-
-            val whitelistedCount = remember {
-                Whitelist.getWhitelistedLaunchableCount(launcherApps)
-            }
+            val whitelistedCount =
+                remember { Whitelist.getWhitelistedLaunchableCount(launcherApps) }
 
             val selectedNavIndex = remember(currentDestination) {
                 when {
@@ -164,498 +149,289 @@ class MainActivity: ComponentActivity() {
 
             LaunchedEffect(shouldNavigateToTimer, shouldNavigateToRoutines) {
                 if (shouldNavigateToTimer) {
-                    navController.navigate(Screen.Timer) {
-                        launchSingleTop = true
-                    }
+                    navController.navigate(Screen.Timer) { launchSingleTop = true }
                     this@MainActivity.shouldNavigateToTimer = false
                 } else if (shouldNavigateToRoutines) {
-                    navController.navigate(Screen.Routines) {
-                        launchSingleTop = true
-                    }
+                    navController.navigate(Screen.Routines) { launchSingleTop = true }
                 }
             }
 
             var dailyUsageText by remember { mutableStateOf("0m today") }
 
-            val homeScreen = remember {
-                movableContentOf {
-                    HomeContent(
-                        onNavigateToTimer = { navController.navigate(Screen.Timer) },
-                        onNavigateToUsage = { navController.navigate(Screen.Usage) },
-                        onNavigateToRoutines = { navController.navigate(Screen.Routines) },
-                        onNavigateToWhitelist = { navController.navigate(Screen.Whitelist) },
-                        onNavigateToIntro = {
-                            startActivity(
-                                Intent(
-                                    this@MainActivity,
-                                    AppIntroActivity::class.java
-                                )
-                            )
-                        },
-                        onRequestAccessibility = {
-                            pendingFocusModeStart = true
-                            showAccessibilityDialog()
-                        },
-                        onSlideProgressChange = { progress ->
-                            slideProgress = progress
-                        },
-                        currentTimeLeft = currentTimeLeft,
-                        currentTimerState = currentTimerState,
-                        whitelistedAppsCount = whitelistedCount,
-                        dailyUsageText = dailyUsageText
-                    )
-                }
-            }
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    val todayUsage = ScreenUsageHelper.fetchAppUsageTodayTillNow(usageStatsManager)
+                    val totalUsageMinutes = todayUsage.values.sum() / 60
+                    val hours = totalUsageMinutes / 60
+                    val minutes = totalUsageMinutes % 60
+                    val usageText = when {
+                        hours > 0 && minutes > 0 -> getString(
+                            R.string.hour_min_short_suffix,
+                            hours,
+                            minutes
+                        ) + " " + getString(R.string.today)
 
-            val timerScreen = remember {
-                movableContentOf {
-                    TimerContent(
-                        isTimerRunning = timerState.isRunning,
-                        isPaused = timerState.isPaused,
-                        currentTimeLeft = currentTimeLeft,
-                        currentTimerState = currentTimerState,
-                        isStrictMode = timerState.isStrictMode,
-                        onStartTimer = { config -> startFocusMode(config) },
-                        onPauseTimer = { pauseFocusMode() },
-                        onResumeTimer = { resumeFocusMode() },
-                        onCancelTimer = { cancelFocusMode() },
-                        onRestartTimer = { restartFocusMode() }
-                    )
-                }
-            }
+                        hours > 0 -> getString(
+                            R.string.hours_short_format,
+                            hours
+                        ) + " " + getString(R.string.today)
 
-            val usageScreen = remember {
-                movableContentOf {
-                    UsageScreenWrapper(
-                        context = this@MainActivity,
-                        usageStatsManager = usageStatsManager,
-                        launcherApps = launcherApps,
-                        packageManager = packageManager,
-                        currentPackageName = packageName,
-                        onBackPressed = { navController.popBackStack() },
-                        onAppClick = { appUsageStats ->
-                            navController.navigate(
-                                Screen.DailyLimit(
-                                    appUsageStats.applicationInfo.packageName
-                                )
-                            )
-                        }
-                    )
-                }
-            }
+                        minutes > 0 -> getString(
+                            R.string.minutes_short_format,
+                            minutes
+                        ) + " " + getString(R.string.today)
 
-            val settingsScreen = remember {
-                movableContentOf {
-                    SettingsContent(
-                        onSoundPicker = { launchSoundPicker() }
-                    )
+                        else -> getString(R.string.less_than_one_minute)
+                    }
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        dailyUsageText = usageText
+                    }
                 }
             }
 
             ReefTheme {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    LaunchedEffect(Unit) {
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                            val todayUsage =
-                                ScreenUsageHelper.fetchAppUsageTodayTillNow(usageStatsManager)
-                            val totalUsageSeconds = todayUsage.values.sum()
-                            val totalUsageMinutes = totalUsageSeconds / 60
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    bottomBar = {
+                        AnimatedVisibility(
+                            visible = showBottomBar,
+                            enter = fadeIn() + slideInVertically { it },
+                            exit = fadeOut() + slideOutVertically { it }
+                        ) {
+                            ReefBottomNavBar(
+                                selectedItem = selectedNavIndex,
+                                onItemSelected = { index ->
+                                    val options = androidx.navigation.navOptions {
+                                        popUpTo(navController.graph.startDestinationId) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                    when (index) {
+                                        0 -> if (selectedNavIndex != 0) navController.navigate(
+                                            Screen.Home,
+                                            options
+                                        )
 
-                            val hours = totalUsageMinutes / 60
-                            val minutes = totalUsageMinutes % 60
+                                        1 -> if (selectedNavIndex != 1) navController.navigate(
+                                            Screen.Usage,
+                                            options
+                                        )
 
-                            val usageText = when {
-                                hours > 0 && minutes > 0 -> getString(
-                                    R.string.hour_min_short_suffix,
-                                    hours,
-                                    minutes
-                                ) + " " + getString(R.string.today)
+                                        2 -> if (selectedNavIndex != 2) navController.navigate(
+                                            Screen.Timer,
+                                            options
+                                        )
 
-                                hours > 0 -> getString(
-                                    R.string.hours_short_format,
-                                    hours
-                                ) + " " + getString(R.string.today)
-
-                                minutes > 0 -> getString(
-                                    R.string.minutes_short_format,
-                                    minutes
-                                ) + " " + getString(R.string.today)
-
-                                else -> getString(R.string.less_than_one_minute)
-                            }
-
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                dailyUsageText = usageText
-                            }
+                                        3 -> if (selectedNavIndex != 3) navController.navigate(
+                                            Screen.Settings,
+                                            options
+                                        )
+                                    }
+                                }
+                            )
                         }
                     }
-
-                    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
-                        rememberTopAppBarState()
-                    )
-
-                    LaunchedEffect(navController) {
-                        navController.currentBackStackEntryFlow.collect { backStackEntry ->
-                            scrollBehavior.state.heightOffset = 0f
-                            scrollBehavior.state.contentOffset = 0f
-                        }
-                    }
-
-                    Scaffold(
+                ) { innerPadding ->
+                    NavHost(
+                        navController = navController,
+                        startDestination = Screen.Home,
                         modifier = Modifier
                             .fillMaxSize()
-                            .nestedScroll(scrollBehavior.nestedScrollConnection),
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        bottomBar = {
-                            AnimatedVisibility(
-                                visible = showBottomBar,
-                                enter = fadeIn() + slideInVertically { it },
-                                exit = fadeOut() + slideOutVertically { it }
-                            ) {
-                                ReefBottomNavBar(
-                                    selectedItem = selectedNavIndex,
-                                    onItemSelected = { index ->
-                                        val options = androidx.navigation.navOptions {
-                                            popUpTo(navController.graph.startDestinationId) {
-                                                saveState = true
-                                            }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-
-                                        when (index) {
-                                            0 -> {
-                                                if (selectedNavIndex != 0) {
-                                                    navController.navigate(Screen.Home, options)
-                                                }
-                                            }
-
-                                            1 -> {
-                                                if (selectedNavIndex != 1) {
-                                                    navController.navigate(Screen.Usage, options)
-                                                }
-                                            }
-
-                                            2 -> {
-                                                if (selectedNavIndex != 2) {
-                                                    navController.navigate(Screen.Timer, options)
-                                                }
-                                            }
-
-                                            3 -> {
-                                                if (selectedNavIndex != 3) {
-                                                    navController.navigate(Screen.Settings, options)
-                                                }
-                                            }
-                                        }
-                                    }
+                            .padding(
+                                PaddingValues(
+                                    innerPadding.calculateStartPadding(LayoutDirection.Ltr),
+                                    0.dp,
+                                    innerPadding.calculateEndPadding(LayoutDirection.Ltr),
+                                    innerPadding.calculateBottomPadding()
                                 )
-                            }
+                            ),
+                        enterTransition = {
+                            fadeIn(animationSpec = tween(250)) +
+                                    slideInHorizontally(
+                                        initialOffsetX = { it / 8 },
+                                        animationSpec = tween(250)
+                                    )
+                        },
+                        exitTransition = {
+                            fadeOut(animationSpec = tween(250)) +
+                                    slideOutHorizontally(
+                                        targetOffsetX = { -it / 8 },
+                                        animationSpec = tween(250)
+                                    )
+                        },
+                        popEnterTransition = {
+                            fadeIn(animationSpec = tween(250)) +
+                                    slideInHorizontally(
+                                        initialOffsetX = { -it / 8 },
+                                        animationSpec = tween(250)
+                                    )
+                        },
+                        popExitTransition = {
+                            fadeOut(animationSpec = tween(250)) +
+                                    slideOutHorizontally(
+                                        targetOffsetX = { it / 8 },
+                                        animationSpec = tween(250)
+                                    )
                         }
-                    ) { innerPadding ->
-                        NavHost(
-                            navController = navController,
-                            startDestination = Screen.Home,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(
-                                    PaddingValues(
-                                        innerPadding.calculateStartPadding(
-                                            LayoutDirection.Ltr
-                                        ),
-                                        0.dp,
-                                        innerPadding.calculateEndPadding(LayoutDirection.Ltr),
-                                        innerPadding.calculateBottomPadding()
-                                    )
-                                ),
-                            enterTransition = {
-                                fadeIn(animationSpec = tween(250)) +
-                                        slideInHorizontally(
-                                            initialOffsetX = { it / 8 },
-                                            animationSpec = tween(250)
-                                        )
-                            },
-                            exitTransition = {
-                                fadeOut(animationSpec = tween(250)) +
-                                        slideOutHorizontally(
-                                            targetOffsetX = { -it / 8 },
-                                            animationSpec = tween(250)
-                                        )
-                            },
-                            popEnterTransition = {
-                                fadeIn(animationSpec = tween(250)) +
-                                        slideInHorizontally(
-                                            initialOffsetX = { -it / 8 },
-                                            animationSpec = tween(250)
-                                        )
-                            },
-                            popExitTransition = {
-                                fadeOut(animationSpec = tween(250)) +
-                                        slideOutHorizontally(
-                                            targetOffsetX = { it / 8 },
-                                            animationSpec = tween(250)
-                                        )
-                            }
-                        ) {
-                            composable<Screen.Home> {
-                                Column(modifier = Modifier.fillMaxSize()) {
-                                    MediumTopAppBar(
-                                        title = {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                            ) {
-                                                Surface(
-                                                    modifier = Modifier.size(44.dp),
-                                                    shape = CircleShape,
-                                                    color = MaterialTheme.colorScheme.primaryContainer
-                                                ) {
-                                                    Box(contentAlignment = Alignment.Center) {
-                                                        Icon(
-                                                            Icons.Filled.Waves,
-                                                            contentDescription = null,
-                                                            modifier = Modifier.size(26.dp),
-                                                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                                        )
-                                                    }
-                                                }
-                                                Text(
-                                                    stringResource(R.string.app_name),
-                                                    style = MaterialTheme.typography.headlineLarge.copy(
-                                                        fontWeight = FontWeight.Medium
-                                                    )
-                                                )
-                                            }
-                                        },
-                                        scrollBehavior = scrollBehavior,
-                                        colors = TopAppBarDefaults.topAppBarColors(
-                                            containerColor = MaterialTheme.colorScheme.surface,
-                                            scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                    ) {
+                        composable<Screen.Home> {
+                            HomeContent(
+                                onNavigateToTimer = { navController.navigate(Screen.Timer) },
+                                onNavigateToUsage = { navController.navigate(Screen.Usage) },
+                                onNavigateToRoutines = { navController.navigate(Screen.Routines) },
+                                onNavigateToWhitelist = { navController.navigate(Screen.Whitelist) },
+                                onNavigateToIntro = {
+                                    startActivity(
+                                        Intent(
+                                            this@MainActivity,
+                                            AppIntroActivity::class.java
                                         )
                                     )
+                                },
+                                onRequestAccessibility = {
+                                    pendingFocusModeStart = true
+                                    showAccessibilityDialog()
+                                },
+                                currentTimeLeft = currentTimeLeft,
+                                currentTimerState = currentTimerState,
+                                whitelistedAppsCount = whitelistedCount,
+                                dailyUsageText = dailyUsageText
+                            )
+                        }
 
-                                    Box(modifier = Modifier.weight(1f)) {
-                                        homeScreen()
-                                    }
+                        composable<Screen.Timer> {
+                            TimerContent(
+                                navController = navController,
+                                isTimerRunning = timerState.isRunning,
+                                isPaused = timerState.isPaused,
+                                currentTimeLeft = currentTimeLeft,
+                                currentTimerState = currentTimerState,
+                                isStrictMode = timerState.isStrictMode,
+                                onStartTimer = { config -> startFocusMode(config) },
+                                onPauseTimer = { pauseFocusMode() },
+                                onResumeTimer = { resumeFocusMode() },
+                                onCancelTimer = { cancelFocusMode() },
+                                onRestartTimer = { restartFocusMode() }
+                            )
+                        }
+
+                        composable<Screen.Usage> {
+                            UsageScreenWrapper(
+                                context = this@MainActivity,
+                                usageStatsManager = usageStatsManager,
+                                launcherApps = launcherApps,
+                                packageManager = packageManager,
+                                currentPackageName = packageName,
+                                onBackPressed = { navController.popBackStack() },
+                                onAppClick = { appUsageStats ->
+                                    navController.navigate(Screen.DailyLimit(appUsageStats.applicationInfo.packageName))
+                                }
+                            )
+                        }
+
+                        composable<Screen.DailyLimit> { backStackEntry ->
+                            val route = backStackEntry.toRoute<Screen.DailyLimit>()
+                            val pkgName = route.packageName
+                            val application =
+                                remember(pkgName) { packageManager.getApplicationInfo(pkgName, 0) }
+                            val appIcon = remember(application) {
+                                packageManager.getApplicationIcon(application)
+                            }
+                            val appName = remember(application) {
+                                packageManager.getApplicationLabel(application).toString()
+                            }
+                            val existingLimitMinutes =
+                                remember(pkgName) { (AppLimits.getLimit(pkgName) / 60000).toInt() }
+                            var weekOffset by remember { mutableIntStateOf(0) }
+                            val dailyData by remember(pkgName, weekOffset) {
+                                derivedStateOf {
+                                    getDailyUsageForLastWeek(
+                                        pkgName,
+                                        usageStatsManager,
+                                        weekOffset
+                                    )
                                 }
                             }
 
-                            composable<Screen.Timer> {
+                            DailyLimitScreen(
+                                appName = appName,
+                                appIcon = appIcon,
+                                packageName = pkgName,
+                                existingLimitMinutes = existingLimitMinutes,
+                                dailyData = dailyData,
+                                onSave = { minutes ->
+                                    AppLimits.setLimit(pkgName, minutes)
+                                    AppLimits.save()
+                                    navController.popBackStack()
+                                },
+                                onRemove = {
+                                    AppLimits.removeLimit(pkgName)
+                                    AppLimits.save()
+                                    navController.popBackStack()
+                                },
+                                onBackPressed = { navController.popBackStack() },
+                                weekOffset = weekOffset,
+                                onWeekChange = { newOffset -> weekOffset = newOffset },
+                                canGoPrevious = weekOffset > -4
+                            )
+                        }
 
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.surface)
-                                ) {
-                                    Column(modifier = Modifier.fillMaxSize()) {
-                                        LargeTopAppBar(
-                                            title = {
-                                                Text(
-                                                    stringResource(R.string.focus_mode_title)
-                                                )
-                                            },
-                                            actions = {
-                                                IconButton(onClick = { navController.navigate(Screen.FocusStats) }) {
-                                                    Icon(
-                                                        Icons.Outlined.BarChart,
-                                                        contentDescription = "Focus Stats"
-                                                    )
-                                                }
-                                            },
-                                            colors = TopAppBarDefaults.topAppBarColors(
-                                                containerColor = Color.Transparent
-                                            ),
-                                            scrollBehavior = scrollBehavior
+                        composable<Screen.Routines> {
+                            RoutinesScreen(
+                                onCreateRoutine = { navController.navigate(Screen.CreateRoutine(null)) },
+                                onEditRoutine = { routine ->
+                                    navController.navigate(
+                                        Screen.CreateRoutine(
+                                            routine.id
                                         )
-                                        timerScreen()
-                                    }
+                                    )
                                 }
-                            }
+                            )
+                        }
 
-                            composable<Screen.Usage> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.surface)
-                                ) {
-                                    Column(modifier = Modifier.fillMaxSize()) {
-                                        LargeTopAppBar(
-                                            title = {
-                                                Text(
-                                                    stringResource(R.string.app_usage)
-                                                )
-                                            },
-                                            colors = TopAppBarDefaults.topAppBarColors(
-                                                containerColor = Color.Transparent
-                                            ),
-                                            scrollBehavior = scrollBehavior
+                        composable<Screen.CreateRoutine> { backStackEntry ->
+                            val route = backStackEntry.toRoute<Screen.CreateRoutine>()
+                            CreateRoutineScreen(
+                                routineId = route.routineId,
+                                onBackPressed = { navController.popBackStack() },
+                                onSaveComplete = { navController.popBackStack() }
+                            )
+                        }
+
+                        composable<Screen.Whitelist> {
+                            WhitelistScreenWrapper(
+                                launcherApps = launcherApps,
+                                packageManager = packageManager,
+                                currentPackageName = packageName
+                            )
+                        }
+
+                        composable<Screen.Settings> {
+                            SettingsContent(onSoundPicker = { launchSoundPicker() })
+                        }
+
+                        composable<Screen.FocusStats> {
+                            FocusStatsScreen(
+                                onBackPressed = { navController.popBackStack() },
+                                onSessionClick = { id ->
+                                    navController.navigate(
+                                        Screen.FocusSessionDetail(
+                                            id
                                         )
-                                        usageScreen()
-                                    }
+                                    )
                                 }
-                            }
+                            )
+                        }
 
-                            composable<Screen.DailyLimit> { backStackEntry ->
-                                val route = backStackEntry.toRoute<Screen.DailyLimit>()
-                                val pkgName = route.packageName
-
-                                val application = remember(pkgName) {
-                                    packageManager.getApplicationInfo(pkgName, 0)
-                                }
-                                val appIcon = remember(application) {
-                                    packageManager.getApplicationIcon(application)
-                                }
-                                val appName = remember(application) {
-                                    packageManager.getApplicationLabel(application).toString()
-                                }
-                                val existingLimitMinutes = remember(pkgName) {
-                                    (AppLimits.getLimit(pkgName) / 60000).toInt()
-                                }
-
-                                var weekOffset by remember { mutableIntStateOf(0) }
-
-                                val dailyData by remember(pkgName, weekOffset) {
-                                    derivedStateOf {
-                                        getDailyUsageForLastWeek(
-                                            pkgName,
-                                            usageStatsManager,
-                                            weekOffset
-                                        )
-                                    }
-                                }
-
-                                DailyLimitScreen(
-                                    appName = appName,
-                                    appIcon = appIcon,
-                                    packageName = pkgName,
-                                    existingLimitMinutes = existingLimitMinutes,
-                                    dailyData = dailyData,
-                                    onSave = { minutes ->
-                                        AppLimits.setLimit(pkgName, minutes)
-                                        AppLimits.save()
-                                        navController.popBackStack()
-                                    },
-                                    onRemove = {
-                                        AppLimits.removeLimit(pkgName)
-                                        AppLimits.save()
-                                        navController.popBackStack()
-                                    },
-                                    onBackPressed = { navController.popBackStack() },
-                                    weekOffset = weekOffset,
-                                    onWeekChange = { newOffset -> weekOffset = newOffset },
-                                    canGoPrevious = weekOffset > -4
-                                )
-                            }
-
-                            composable<Screen.Routines> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.surface)
-                                ) {
-                                    Column(modifier = Modifier.fillMaxSize()) {
-                                        LargeTopAppBar(
-                                            title = {
-                                                Text(
-                                                    stringResource(R.string.routines)
-                                                )
-                                            },
-                                            colors = TopAppBarDefaults.topAppBarColors(
-                                                containerColor = Color.Transparent
-                                            ),
-                                            scrollBehavior = scrollBehavior
-                                        )
-                                        RoutinesScreen(
-                                            onCreateRoutine = {
-                                                navController.navigate(
-                                                    Screen.CreateRoutine(
-                                                        null
-                                                    )
-                                                )
-                                            },
-                                            onEditRoutine = { routine ->
-                                                navController.navigate(Screen.CreateRoutine(routine.id))
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
-                            composable<Screen.CreateRoutine> { backStackEntry ->
-                                val route = backStackEntry.toRoute<Screen.CreateRoutine>()
-                                CreateRoutineScreen(
-                                    routineId = route.routineId,
-                                    onBackPressed = { navController.popBackStack() },
-                                    onSaveComplete = { navController.popBackStack() }
-                                )
-                            }
-
-                            composable<Screen.Whitelist> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.surface)
-                                ) {
-                                    Column(modifier = Modifier.fillMaxSize()) {
-                                        LargeTopAppBar(
-                                            title = {
-                                                Text(
-                                                    stringResource(R.string.whitelist_apps_title)
-                                                )
-                                            },
-                                            colors = TopAppBarDefaults.topAppBarColors(
-                                                containerColor = Color.Transparent
-                                            ),
-                                            scrollBehavior = scrollBehavior
-                                        )
-                                        WhitelistScreenWrapper(
-                                            launcherApps = launcherApps,
-                                            packageManager = packageManager,
-                                            currentPackageName = packageName
-                                        )
-                                    }
-                                }
-                            }
-
-                            composable<Screen.Settings> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.surface)
-                                ) {
-                                    Column(modifier = Modifier.fillMaxSize()) {
-                                        LargeTopAppBar(
-                                            title = {
-                                                Text(
-                                                    stringResource(R.string.settings)
-                                                )
-                                            },
-                                            colors = TopAppBarDefaults.topAppBarColors(
-                                                containerColor = Color.Transparent
-                                            ),
-                                            scrollBehavior = scrollBehavior
-                                        )
-                                        settingsScreen()
-                                    }
-                                }
-                            }
-
-                            composable<Screen.FocusStats> {
-                                FocusStatsScreen(
-                                    onBackPressed = { navController.popBackStack() },
-                                    onSessionClick = { id ->
-                                        navController.navigate(Screen.FocusSessionDetail(id))
-                                    }
-                                )
-                            }
-
-                            composable<Screen.FocusSessionDetail> { backStackEntry ->
-                                val route = backStackEntry.toRoute<Screen.FocusSessionDetail>()
-                                FocusSessionDetailScreen(
-                                    sessionId = route.sessionId,
-                                    onBackPressed = { navController.popBackStack() }
-                                )
-                            }
+                        composable<Screen.FocusSessionDetail> { backStackEntry ->
+                            val route = backStackEntry.toRoute<Screen.FocusSessionDetail>()
+                            FocusSessionDetailScreen(
+                                sessionId = route.sessionId,
+                                onBackPressed = { navController.popBackStack() }
+                            )
                         }
                     }
                 }
@@ -686,28 +462,24 @@ class MainActivity: ComponentActivity() {
 
     private fun startFocusMode(config: TimerConfig) {
         when (config) {
-            is TimerConfig.Simple -> {
-                prefs.edit {
-                    putBoolean("focus_mode", true)
-                    putBoolean("pomodoro_mode", false)
-                    putLong("focus_time", config.minutes * 60 * 1000L)
-                    putBoolean("strict_mode", config.strictMode)
-                }
+            is TimerConfig.Simple -> prefs.edit {
+                putBoolean("focus_mode", true)
+                putBoolean("pomodoro_mode", false)
+                putLong("focus_time", config.minutes * 60 * 1000L)
+                putBoolean("strict_mode", config.strictMode)
             }
 
-            is TimerConfig.Pomodoro -> {
-                prefs.edit {
-                    putBoolean("focus_mode", true)
-                    putBoolean("pomodoro_mode", true)
-                    putLong("focus_time", config.focusMinutes * 60 * 1000L)
-                    putLong("pomodoro_focus_duration", config.focusMinutes * 60 * 1000L)
-                    putLong("pomodoro_short_break_duration", config.shortBreakMinutes * 60 * 1000L)
-                    putLong("pomodoro_long_break_duration", config.longBreakMinutes * 60 * 1000L)
-                    putInt("pomodoro_cycles_before_long_break", config.cycles)
-                    putInt("pomodoro_current_cycle", 1)
-                    putString("pomodoro_state", "FOCUS")
-                    putBoolean("strict_mode", config.strictMode)
-                }
+            is TimerConfig.Pomodoro -> prefs.edit {
+                putBoolean("focus_mode", true)
+                putBoolean("pomodoro_mode", true)
+                putLong("focus_time", config.focusMinutes * 60 * 1000L)
+                putLong("pomodoro_focus_duration", config.focusMinutes * 60 * 1000L)
+                putLong("pomodoro_short_break_duration", config.shortBreakMinutes * 60 * 1000L)
+                putLong("pomodoro_long_break_duration", config.longBreakMinutes * 60 * 1000L)
+                putInt("pomodoro_cycles_before_long_break", config.cycles)
+                putInt("pomodoro_current_cycle", 1)
+                putString("pomodoro_state", "FOCUS")
+                putBoolean("strict_mode", config.strictMode)
             }
         }
         startForegroundService(Intent(this, FocusModeService::class.java).apply {
@@ -743,12 +515,10 @@ class MainActivity: ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-
         if (!hasCheckedPermissions && !prefs.getBoolean("first_run", true)) {
             hasCheckedPermissions = true
             checkAndRequestMissingPermissions()
         }
-
         if (pendingFocusModeStart && isAccessibilityServiceEnabledForBlocker()) {
             pendingFocusModeStart = false
         }
@@ -770,14 +540,10 @@ class MainActivity: ComponentActivity() {
     }
 
     private fun addExceptions() {
-        val intent = Intent(Intent.ACTION_MAIN)
-        intent.addCategory(Intent.CATEGORY_HOME)
-
+        val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_HOME) }
         packageManager.queryIntentActivities(intent, 0).forEach {
             val packageName = it.activityInfo.packageName
-            if (!Whitelist.isWhitelisted(packageName)) {
-                Whitelist.whitelist(packageName)
-            }
+            if (!Whitelist.isWhitelisted(packageName)) Whitelist.whitelist(packageName)
         }
     }
 }
@@ -788,8 +554,7 @@ private fun ReefBottomNavBar(
     onItemSelected: (Int) -> Unit
 ) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainer,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ) {
@@ -802,7 +567,7 @@ private fun ReefBottomNavBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             BottomNavItem(
-                icon = Icons.Outlined.Home,
+                icon = Icons.Rounded.Home,
                 label = stringResource(R.string.nav_home),
                 selected = selectedItem == 0,
                 onClick = { onItemSelected(0) }
@@ -814,13 +579,13 @@ private fun ReefBottomNavBar(
                 onClick = { onItemSelected(1) }
             )
             BottomNavItem(
-                icon = Icons.Rounded.SelfImprovement,
+                icon = Icons.Rounded.EmojiNature,
                 label = stringResource(R.string.nav_focus),
                 selected = selectedItem == 2,
                 onClick = { onItemSelected(2) }
             )
             BottomNavItem(
-                icon = Icons.Outlined.Settings,
+                icon = Icons.Rounded.Settings,
                 label = stringResource(R.string.nav_settings),
                 selected = selectedItem == 3,
                 onClick = { onItemSelected(3) }

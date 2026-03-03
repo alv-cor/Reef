@@ -3,17 +3,34 @@ package dev.pranav.reef.accessibility
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import dev.pranav.reef.R
 import dev.pranav.reef.scheduleWatcher
+import dev.pranav.reef.services.routines.RoutineSessionManager
 import dev.pranav.reef.util.*
 import dev.pranav.reef.util.NotificationHelper.createNotificationChannel
+import dev.pranav.reef.util.NotificationHelper.syncRoutineNotification
 
 @SuppressLint("AccessibilityPolicy")
 class BlockerService: AccessibilityService() {
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val routinePollRunnable = object: Runnable {
+        override fun run() {
+            try {
+                RoutineSessionManager.evaluateAndSync(this@BlockerService)
+                syncRoutineNotification(this@BlockerService)
+            } catch (e: Exception) {
+                Log.e("BlockerService", "Routine poll error", e)
+            }
+            handler.postDelayed(this, ROUTINE_POLL_INTERVAL_MS)
+        }
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -25,8 +42,8 @@ class BlockerService: AccessibilityService() {
         }
 
         scheduleWatcher(this)
+        handler.post(routinePollRunnable)
     }
-
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         val keyguardManager = getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager
@@ -51,9 +68,7 @@ class BlockerService: AccessibilityService() {
         if (blockReason == UsageTracker.BlockReason.NONE) return
 
         Log.d("BlockerService", "Blocking $pkg due to ${blockReason.name}")
-
         performGlobalAction(GLOBAL_ACTION_HOME)
-
         showBlockedNotification(pkg, blockReason)
     }
 
@@ -65,9 +80,7 @@ class BlockerService: AccessibilityService() {
         }
 
         val appName = try {
-            packageManager.getApplicationLabel(
-                packageManager.getApplicationInfo(pkg, 0)
-            )
+            packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0))
         } catch (_: PackageManager.NameNotFoundException) {
             pkg
         }
@@ -89,8 +102,7 @@ class BlockerService: AccessibilityService() {
             .setAutoCancel(true)
             .build()
 
-        NotificationManagerCompat.from(this)
-            .notify(pkg.hashCode(), notification)
+        NotificationManagerCompat.from(this).notify(pkg.hashCode(), notification)
     }
 
     @SuppressLint("MissingPermission")
@@ -101,9 +113,7 @@ class BlockerService: AccessibilityService() {
         if (!prefs.getBoolean("focus_reminders", true)) return
 
         val appName = try {
-            packageManager.getApplicationLabel(
-                packageManager.getApplicationInfo(pkg, 0)
-            )
+            packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0))
         } catch (_: PackageManager.NameNotFoundException) {
             pkg
         }
@@ -116,13 +126,17 @@ class BlockerService: AccessibilityService() {
             .setAutoCancel(true)
             .build()
 
-        NotificationManagerCompat.from(this)
-            .notify(pkg.hashCode(), notification)
+        NotificationManagerCompat.from(this).notify(pkg.hashCode(), notification)
     }
 
     override fun onInterrupt() {}
 
     override fun onDestroy() {
         super.onDestroy()
+        handler.removeCallbacks(routinePollRunnable)
+    }
+
+    companion object {
+        private const val ROUTINE_POLL_INTERVAL_MS = 30_000L
     }
 }

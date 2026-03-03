@@ -4,16 +4,26 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.pranav.reef.R
 import dev.pranav.reef.ui.appusage.AppUsageScreen
 import dev.pranav.reef.ui.appusage.AppUsageStats
 import dev.pranav.reef.ui.appusage.AppUsageViewModel
 import dev.pranav.reef.ui.whitelist.WhitelistScreen
 import dev.pranav.reef.ui.whitelist.WhitelistViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UsageScreenWrapper(
     context: Context,
@@ -28,21 +38,41 @@ fun UsageScreenWrapper(
         key = "app_usage_viewmodel",
         factory = object: ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T: ViewModel> create(modelClass: Class<T>): T {
-                return AppUsageViewModel(
-                    context, usageStatsManager, launcherApps, packageManager, currentPackageName
+            override fun <T: ViewModel> create(modelClass: Class<T>): T =
+                AppUsageViewModel(
+                    context,
+                    usageStatsManager,
+                    launcherApps,
+                    packageManager,
+                    currentPackageName
                 ) as T
-            }
         }
     )
 
-    AppUsageScreen(
-        viewModel = viewModel,
-        onBackPressed = onBackPressed,
-        onAppClick = onAppClick
-    )
+    val scrollBehavior =
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = WindowInsets(0),
+        topBar = {
+            LargeTopAppBar(
+                title = { Text(stringResource(R.string.app_usage)) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                scrollBehavior = scrollBehavior
+            )
+        }
+    ) { paddingValues ->
+        AppUsageScreen(
+            viewModel = viewModel,
+            contentPadding = paddingValues,
+            onBackPressed = onBackPressed,
+            onAppClick = onAppClick
+        )
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WhitelistScreenWrapper(
     launcherApps: LauncherApps,
@@ -52,18 +82,33 @@ fun WhitelistScreenWrapper(
     val viewModel: WhitelistViewModel = viewModel(
         factory = object: ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T: ViewModel> create(modelClass: Class<T>): T {
-                return WhitelistViewModel(
-                    launcherApps, packageManager, currentPackageName
-                ) as T
-            }
+            override fun <T: ViewModel> create(modelClass: Class<T>): T =
+                WhitelistViewModel(launcherApps, packageManager, currentPackageName) as T
         }
     )
 
-    WhitelistScreen(
-        uiState = viewModel.uiState.value,
-        onToggle = viewModel::toggleWhitelist,
-        searchQuery = viewModel.searchQuery.value,
-        onSearchQueryChange = viewModel::onSearchQueryChange
-    )
+    val scrollBehavior =
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = WindowInsets(0),
+        topBar = {
+            LargeTopAppBar(
+                title = { Text(stringResource(R.string.whitelist_apps_title)) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                scrollBehavior = scrollBehavior
+            )
+        }
+    ) { paddingValues ->
+        WhitelistScreen(
+            uiState = viewModel.uiState.value,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            onToggle = viewModel::toggleWhitelist,
+            searchQuery = viewModel.searchQuery.value,
+            onSearchQueryChange = viewModel::onSearchQueryChange
+        )
+    }
 }

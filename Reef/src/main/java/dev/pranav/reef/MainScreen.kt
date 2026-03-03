@@ -20,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -38,6 +39,7 @@ import dev.pranav.reef.util.prefs
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeContent(
     onNavigateToTimer: () -> Unit,
@@ -58,6 +60,10 @@ fun HomeContent(
     var showDiscordDialog by remember { mutableStateOf(false) }
     var showDonateDialog by remember { mutableStateOf(false) }
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        rememberTopAppBarState()
+    )
+
     LaunchedEffect(Unit) {
         if (prefs.getBoolean("first_run", true)) {
             onNavigateToIntro()
@@ -71,99 +77,141 @@ fun HomeContent(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-            .navigationBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(Modifier.height(8.dp))
-
-        FocusModeCard(
-            onSlideProgress = onSlideProgressChange,
-            onClick = {
-                if (context.isAccessibilityServiceEnabledForBlocker()) {
-                    onNavigateToTimer()
-                } else {
-                    onRequestAccessibility()
-                }
-            }
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            AppUsageCard(
-                modifier = Modifier.weight(1f),
-                onClick = onNavigateToUsage,
-                usageText = dailyUsageText
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = WindowInsets(0),
+        topBar = {
+            MediumTopAppBar(
+                title = {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(44.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Filled.Waves,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(26.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        Text(
+                            stringResource(R.string.app_name),
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontWeight = FontWeight.Medium
+                            )
+                        )
+                    }
+                },
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer
+                )
             )
-            TimeLimitsCard(
-                modifier = Modifier.weight(1f),
-                onClick = onNavigateToWhitelist,
-                whitelistedCount = whitelistedAppsCount,
-                context = context
+        },
+        containerColor = MaterialTheme.colorScheme.surface
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            Spacer(Modifier.height(8.dp))
+
+            FocusModeCard(
+                onSlideProgress = onSlideProgressChange,
+                onClick = {
+                    if (context.isAccessibilityServiceEnabledForBlocker()) {
+                        onNavigateToTimer()
+                    } else {
+                        onRequestAccessibility()
+                    }
+                }
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                AppUsageCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = onNavigateToUsage,
+                    usageText = dailyUsageText
+                )
+                TimeLimitsCard(
+                    modifier = Modifier.weight(1f),
+                    onClick = onNavigateToWhitelist,
+                    whitelistedCount = whitelistedAppsCount,
+                    context = context
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            RoutinesCard(onClick = onNavigateToRoutines)
+
+            Spacer(Modifier.height(12.dp))
+
+            PomodoroTimerCard(
+                onClick = onNavigateToTimer,
+                isRunning = timerState.isRunning,
+                isPaused = timerState.isPaused,
+                currentTimeLeft = currentTimeLeft,
+                currentTimerState = currentTimerState
+            )
+
+            Spacer(Modifier.height(16.dp))
+        }
+
+        if (showDiscordDialog) {
+            CommunityDialog(
+                onDismiss = {
+                    prefs.edit { putBoolean("discord_shown", true) }
+                    showDiscordDialog = false
+                },
+                onJoin = {
+                    prefs.edit { putBoolean("discord_shown", true) }
+                    context.startActivity(
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            "https://discord.gg/46wCMRVAre".toUri()
+                        )
+                    )
+                    showDiscordDialog = false
+                }
             )
         }
 
-        Spacer(Modifier.height(12.dp))
-
-        RoutinesCard(onClick = onNavigateToRoutines)
-
-        Spacer(Modifier.height(12.dp))
-
-        PomodoroTimerCard(
-            onClick = onNavigateToTimer,
-            isRunning = timerState.isRunning,
-            isPaused = timerState.isPaused,
-            currentTimeLeft = currentTimeLeft,
-            currentTimerState = currentTimerState
-        )
-
-        Spacer(Modifier.height(16.dp))
-    }
-
-    if (showDiscordDialog) {
-        CommunityDialog(
-            onDismiss = {
-                prefs.edit { putBoolean("discord_shown", true) }
-                showDiscordDialog = false
-            },
-            onJoin = {
-                prefs.edit { putBoolean("discord_shown", true) }
-                context.startActivity(
-                    Intent(
-                        Intent.ACTION_VIEW,
-                        "https://discord.gg/46wCMRVAre".toUri()
+        if (showDonateDialog) {
+            DonateDialog(
+                onDismiss = {
+                    prefs.edit { putBoolean("show_dialog", false) }
+                    showDonateDialog = false
+                },
+                onSupport = {
+                    prefs.edit { putBoolean("show_dialog", false) }
+                    context.startActivity(
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            "https://PranavPurwar.github.io/donate.html".toUri()
+                        )
                     )
-                )
-                showDiscordDialog = false
-            }
-        )
-    }
-
-    if (showDonateDialog) {
-        DonateDialog(
-            onDismiss = {
-                prefs.edit { putBoolean("show_dialog", false) }
-                showDonateDialog = false
-            },
-            onSupport = {
-                prefs.edit { putBoolean("show_dialog", false) }
-                context.startActivity(
-                    Intent(
-                        Intent.ACTION_VIEW,
-                        "https://PranavPurwar.github.io/donate.html".toUri()
-                    )
-                )
-                showDonateDialog = false
-            }
-        )
+                    showDonateDialog = false
+                }
+            )
+        }
     }
 }
 

@@ -135,6 +135,7 @@ fun FocusStatsScreen(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = WindowInsets(0),
         topBar = {
             LargeTopAppBar(
                 title = {

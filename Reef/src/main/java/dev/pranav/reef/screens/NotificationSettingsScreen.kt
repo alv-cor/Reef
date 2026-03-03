@@ -2,15 +2,17 @@ package dev.pranav.reef.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -18,8 +20,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import dev.pranav.reef.R
 import dev.pranav.reef.receivers.DailySummaryScheduler
+import dev.pranav.reef.util.append
 import dev.pranav.reef.util.prefs
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationSettingsContent(
     onBackPressed: () -> Unit
@@ -32,29 +36,29 @@ fun NotificationSettingsContent(
     var dailySummary by remember { mutableStateOf(prefs.getBoolean("daily_summary", false)) }
     var limitWarnings by remember { mutableStateOf(prefs.getBoolean("limit_warnings", true)) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBackPressed) {
-                Icon(
-                    Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = stringResource(R.string.back)
-                )
-            }
-            Text(
-                text = stringResource(R.string.notifications_settings_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
+    Scaffold(
+        topBar = {
+            LargeTopAppBar(
+                title = { Text(stringResource(R.string.notifications_settings_title)) },
+                navigationIcon = {
+                    IconButton(onClick = onBackPressed) {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
+                    }
+                },
+                scrollBehavior = scrollBehavior
+            )
+        },
+        contentWindowInsets = WindowInsets(0.dp),
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+    ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            contentPadding = innerPadding.append(16.dp)
         ) {
             item {
                 Text(

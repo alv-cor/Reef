@@ -9,8 +9,8 @@ import android.util.Log
 import androidx.work.*
 import com.google.android.material.color.DynamicColors
 import dev.pranav.reef.accessibility.BlockerService
-import dev.pranav.reef.accessibility.RoutinesService
 import dev.pranav.reef.receivers.DailySummaryScheduler
+import dev.pranav.reef.services.routines.RoutineSessionManager
 import dev.pranav.reef.util.*
 import java.util.concurrent.TimeUnit
 
@@ -34,7 +34,8 @@ class App: Application(), Configuration.Provider {
 
         scheduleWatcher(this)
 
-        RoutinesService.start(this)
+        RoutineSessionManager.evaluateAndSync(this)
+        NotificationHelper.syncRoutineNotification(this)
 
         if (prefs.getBoolean("daily_summary", false)) {
             DailySummaryScheduler.scheduleDailySummary(this)

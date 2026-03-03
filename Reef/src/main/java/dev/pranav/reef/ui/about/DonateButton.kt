@@ -90,7 +90,8 @@ fun DonateButton() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
-                    shapes = ButtonDefaults.shapes()
+                    shapes = ButtonDefaults.shapes(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
                     Icon(Icons.Rounded.Favorite, null, Modifier.size(24.dp))
                     Spacer(Modifier.width(12.dp))
@@ -109,11 +110,10 @@ fun DonateButton() {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp)
             .clip(RoundedCornerShape(16.dp))
             .clickable { showSheet = true },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
     ) {
         Row(
             modifier = Modifier
@@ -125,14 +125,14 @@ fun DonateButton() {
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                    .background(MaterialTheme.colorScheme.tertiaryFixedDim),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Rounded.Favorite,
                     null,
                     Modifier.size(28.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
             Spacer(Modifier.width(16.dp))

@@ -46,9 +46,10 @@ fun WhitelistScreen(
     uiState: AllowedAppsState,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
-    onToggle: (WhitelistedApp) -> Unit
+    onToggle: (WhitelistedApp) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,

@@ -135,7 +135,7 @@ object RoutineSessionManager {
             TAG,
             "Started session for ${routine.name}: ${limits.size} limits, ${sharedGroups.size} groups, endTime=${if (endTime == 0L) "never" else endTime}"
         )
-        NotificationHelper.showRoutineActivatedNotification(context, routine)
+        NotificationHelper.syncRoutineNotification(context)
     }
 
     private fun stopSessionInternal(context: Context, routineId: String) {
@@ -144,8 +144,7 @@ object RoutineSessionManager {
 
         if (removed) {
             saveActiveSessions(sessions)
-            val routine = dev.pranav.reef.routine.Routines.get(routineId)
-            routine?.let { NotificationHelper.showRoutineDeactivatedNotification(context, it) }
+            NotificationHelper.syncRoutineNotification(context)
             Log.d(TAG, "Stopped session: $routineId. Remaining: ${sessions.size}")
         }
     }

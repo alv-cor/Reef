@@ -12,8 +12,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -56,9 +57,32 @@ fun RoutinesScreen(
         routines = Routines.getAll()
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    val scrollBehavior =
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = WindowInsets(0),
+        topBar = {
+            LargeTopAppBar(
+                title = { Text(stringResource(R.string.routines)) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                scrollBehavior = scrollBehavior
+            )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = onCreateRoutine,
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text(stringResource(R.string.create_routine)) }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -74,9 +98,7 @@ fun RoutinesScreen(
                 items(routines, key = { it.id }) { routine ->
                     RoutineItem(
                         routine = routine,
-                        onClick = {
-                            onEditRoutine(routine)
-                        },
+                        onClick = { onEditRoutine(routine) },
                         onToggle = { _ ->
                             Routines.toggle(routine.id, context)
                             routines = Routines.getAll()
@@ -86,20 +108,6 @@ fun RoutinesScreen(
                 }
             }
         }
-
-        ExtendedFloatingActionButton(
-            onClick = onCreateRoutine,
-            icon = { Icon(Icons.Default.Add, contentDescription = null) },
-            text = { Text(stringResource(R.string.create_routine)) },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        )
-
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
     }
 }
 
@@ -209,43 +217,6 @@ private fun RoutineItem(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer
-                    ) {
-                        Text(
-                            text = when (routine.limits.size) {
-                                0 -> stringResource(R.string.no_app_limits_set)
-                                else -> pluralStringResource(
-                                    R.plurals.app_limits_applied,
-                                    routine.limits.size,
-                                    routine.limits.size
-                                )
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-
-                    AnimatedVisibility(visible = routine.groups.isNotEmpty()) {
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer
-                        ) {
-                            Text(
-                                text = pluralStringResource(
-                                    R.plurals.groups_count,
-                                    routine.groups.size,
-                                    routine.groups.size
-                                ),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-
                     AnimatedVisibility(visible = routine.isEnabled) {
                         Surface(
                             shape = RoundedCornerShape(4.dp),

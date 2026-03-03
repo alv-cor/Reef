@@ -12,7 +12,7 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import dev.pranav.reef.R
 import dev.pranav.reef.accessibility.FocusModeService
-import dev.pranav.reef.accessibility.RoutinesService
+import dev.pranav.reef.services.routines.RoutineSessionManager
 
 class ReefWorker(context: Context, params: WorkerParameters): Worker(context, params) {
 
@@ -38,7 +38,12 @@ class ReefWorker(context: Context, params: WorkerParameters): Worker(context, pa
             safeContext.startForegroundService(intent)
         }
 
-        RoutinesService.start(safeContext)
+        if (!isPrefsInitialized) {
+            dev.pranav.reef.util.prefs =
+                safeContext.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        }
+        RoutineSessionManager.evaluateAndSync(safeContext)
+        NotificationHelper.syncRoutineNotification(safeContext)
 
         return Result.success()
     }
@@ -54,13 +59,10 @@ class ReefWorker(context: Context, params: WorkerParameters): Worker(context, pa
     ) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        val channel = NotificationChannel(
-            channelId,
-            channelName,
-            NotificationManager.IMPORTANCE_HIGH
-        ).apply {
-            description = "Channel for Reef alerts"
-        }
+        val channel =
+            NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Channel for Reef alerts"
+            }
         manager.createNotificationChannel(channel)
 
         val builder = NotificationCompat.Builder(context, channelId)
@@ -73,7 +75,6 @@ class ReefWorker(context: Context, params: WorkerParameters): Worker(context, pa
         try {
             NotificationManagerCompat.from(context).notify(notificationId, builder.build())
         } catch (_: SecurityException) {
-            // Handle missing permission
         }
     }
 }

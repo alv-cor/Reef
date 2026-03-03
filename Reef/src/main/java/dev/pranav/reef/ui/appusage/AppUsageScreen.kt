@@ -57,6 +57,7 @@ private fun formatTime(context: android.content.Context, timeInMillis: Long): St
 @Composable
 fun AppUsageScreen(
     viewModel: AppUsageViewModel,
+    contentPadding: PaddingValues = PaddingValues(),
     @Suppress("UNUSED_PARAMETER") onBackPressed: () -> Unit,
     onAppClick: (AppUsageStats) -> Unit
 ) {
@@ -75,7 +76,9 @@ fun AppUsageScreen(
     Crossfade(targetState = isLoading, label = "loading") { loading ->
         if (loading) {
             Column(
-                Modifier.fillMaxSize(),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = contentPadding.calculateTopPadding()),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -85,8 +88,13 @@ fun AppUsageScreen(
             }
         } else {
             LazyColumn(
-                Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
+                Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = contentPadding.calculateTopPadding() + 16.dp,
+                    bottom = contentPadding.calculateBottomPadding() + 16.dp
+                ),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 item {
