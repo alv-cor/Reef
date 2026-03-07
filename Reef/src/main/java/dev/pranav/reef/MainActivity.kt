@@ -13,6 +13,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -127,7 +129,7 @@ class MainActivity: ComponentActivity() {
                     currentDestination?.hasRoute<Screen.Usage>() == true -> 1
                     currentDestination?.hasRoute<Screen.Timer>() == true -> 2
                     currentDestination?.hasRoute<Screen.Settings>() == true -> 3
-                    else -> 0
+                    else -> -1
                 }
             }
 
@@ -210,22 +212,25 @@ class MainActivity: ComponentActivity() {
                                         restoreState = true
                                     }
                                     when (index) {
-                                        0 -> if (selectedNavIndex != 0) navController.navigate(
-                                            Screen.Home,
-                                            options
-                                        )
+                                        0 -> navController.navigate(Screen.Home) {
+                                            popUpTo(navController.graph.startDestinationId) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = false
+                                        }
 
-                                        1 -> if (selectedNavIndex != 1) navController.navigate(
+                                        1 -> navController.navigate(
                                             Screen.Usage,
                                             options
                                         )
 
-                                        2 -> if (selectedNavIndex != 2) navController.navigate(
+                                        2 -> navController.navigate(
                                             Screen.Timer,
                                             options
                                         )
 
-                                        3 -> if (selectedNavIndex != 3) navController.navigate(
+                                        3 -> navController.navigate(
                                             Screen.Settings,
                                             options
                                         )
@@ -249,31 +254,43 @@ class MainActivity: ComponentActivity() {
                                 )
                             ),
                         enterTransition = {
-                            fadeIn(animationSpec = tween(250)) +
-                                    slideInHorizontally(
-                                        initialOffsetX = { it / 8 },
-                                        animationSpec = tween(250)
+                            fadeIn(animationSpec = tween(300)) +
+                                    slideIntoContainer(
+                                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                        animationSpec = spring(
+                                            dampingRatio = 0.8f,
+                                            stiffness = 300f
+                                        )
                                     )
                         },
                         exitTransition = {
-                            fadeOut(animationSpec = tween(250)) +
-                                    slideOutHorizontally(
-                                        targetOffsetX = { -it / 8 },
-                                        animationSpec = tween(250)
+                            fadeOut(animationSpec = tween(300)) +
+                                    slideOutOfContainer(
+                                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                        animationSpec = spring(
+                                            dampingRatio = 0.8f,
+                                            stiffness = 300f
+                                        )
                                     )
                         },
                         popEnterTransition = {
-                            fadeIn(animationSpec = tween(250)) +
-                                    slideInHorizontally(
-                                        initialOffsetX = { -it / 8 },
-                                        animationSpec = tween(250)
+                            fadeIn(animationSpec = tween(300)) +
+                                    slideIntoContainer(
+                                        towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                        animationSpec = spring(
+                                            dampingRatio = 0.8f,
+                                            stiffness = 300f
+                                        )
                                     )
                         },
                         popExitTransition = {
-                            fadeOut(animationSpec = tween(250)) +
-                                    slideOutHorizontally(
-                                        targetOffsetX = { it / 8 },
-                                        animationSpec = tween(250)
+                            fadeOut(animationSpec = tween(300)) +
+                                    slideOutOfContainer(
+                                        towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                        animationSpec = spring(
+                                            dampingRatio = 0.8f,
+                                            stiffness = 300f
+                                        )
                                     )
                         }
                     ) {

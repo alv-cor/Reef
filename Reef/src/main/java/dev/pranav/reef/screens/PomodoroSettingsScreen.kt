@@ -122,7 +122,7 @@ fun PomodoroSettingsContent(
 
     Scaffold(
         topBar = {
-            LargeTopAppBar(
+            MediumTopAppBar(
                 title = { Text(stringResource(R.string.pomodoro_settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBackPressed) {

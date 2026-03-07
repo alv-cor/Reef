@@ -92,7 +92,7 @@ fun CreateRoutineScreen(
         contentWindowInsets = WindowInsets(0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            LargeTopAppBar(
+            MediumTopAppBar(
                 title = {
                     Text(
                         if (currentRoutine != null) stringResource(R.string.edit_routine)
