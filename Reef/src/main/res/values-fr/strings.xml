@@ -55,7 +55,6 @@
     <string name="create_routine">Créer une routine</string>
     <string name="focus_session_complete">Session Focus terminée</string>
     <string name="focus_session_complete_message">Bien joué ! Vous avez terminé votre session focus.</string>
-    <string name="app_name" translatable="false"/>
     <string name="focus_mode_title">Mode Focus</string>
     <string name="focus_mode_channel_name">Mode Focus</string>
 </resources>
