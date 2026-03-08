@@ -620,6 +620,12 @@ class FocusModeService: Service() {
             }
 
             val ringtone = android.media.RingtoneManager.getRingtone(applicationContext, soundUri)
+
+            ringtone?.audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+
             ringtone?.play()
         } catch (e: Exception) {
             e.printStackTrace()
