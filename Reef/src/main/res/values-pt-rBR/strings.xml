@@ -1,3 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="accessibility_service_name">Serviço Reef</string>
+    <string name="app_description">Reef é um aplicativo de código aberto de produtividade feito para ajudar a reduzir seu tempo de tela e melhorar sua produtividade.</string>
+    <string name="accessibility_service">Acessibilidade</string>
+    <string name="accessibility_service_description">Nós usamos serviços de acessibilidade para bloquear aplicativos que distraem e te ajudar a focar no trabalho.</string>
+    <string name="accessibility_service_app_limit">Nós utilizamos serviços de acessibilidade para aplicar tempo limite de tela para cada aplicativo.</string>
+    <string name="agree">Concordar</string>
+    <string name="time_remaining">Tempo restante: %1$s</string>
+    <string name="focus_mode">Modo de foco</string>
+    <string name="app_usage">Uso do aplicativo</string>
+    <string name="usage_access">Uso do acesso</string>
+    <string name="usage_access_description">"Nós usamos  o uso de acesso para determinar o uso do aplicativo, nenhum dado é compartilhado ou coletado."</string>
+    <string name="app_usage_statistics">Estatisticas de uso do aplicativo</string>
+    <string name="app_usage_statistics_description">Nós usamos as estatisticas de uso do aplicativo para ajudar a controlar o tempo de tela. Nenhum dado é compartilhado.</string>
+    <string name="notification_permission">Permissão de notificação</string>
+    <string name="notification_permission_description">Por favor permita o uso de notificações para continuar</string>
+    <string name="battery_optimization_exception">Exceção de otimização de bateria</string>
+    <string name="battery_optimization_exception_description">Por favor permita a exceção de otimização de bateria para continuar</string>
+    <string name="whitelist_apps">Aplicativos liberados</string>
+    <string name="set_limit">Limitar</string>
+    <string name="remove_limit">Remover limite</string>
+    <string name="daily_usage_limit">Limite de uso diario</string>
+    <string name="app_icon">Ícone do aplicativo</string>
+    <string name="weekly_overview">Semanal</string>
+    <string name="no_routines">Sem rotinas</string>
+    <string name="routine_icon">Ícone da rotina</string>
+    <string name="active_status">Ativo</string>
+    <string name="routine_name">Nome da rotina</string>
+    <string name="schedule">Cronograma</string>
+    <string name="daily">Diario</string>
+    <string name="weekly">Semanal</string>
+    <string name="manual">Manual</string>
+    <string name="start_time">Começar</string>
+    <string name="end_time">Terminar</string>
+    <string name="set_limits_label">Limitar</string>
+    <string name="focus_mode_title">Modo de foco</string>
+    <string name="notification_continue">Continuar</string>
+    <string name="focus_mode_channel_name">Modo de foco</string>
 </resources>
