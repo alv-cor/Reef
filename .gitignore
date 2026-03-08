@@ -18,3 +18,4 @@ gradle.properties
 *.patch
 /Reef/.idea
 *.jks
+/.kotlin/sessions
