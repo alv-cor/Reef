@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Reef</string>
     <string name="accessibility_service_name">Service Reef</string>
     <string name="app_description">Reef est une appli open-source de productivité imaginée pour vous aider à réduire votre temps d\'écran et améliorer votre productivité.</string>
     <string name="accessibility_service">Service d\'Accessibilité</string>
