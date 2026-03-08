@@ -242,4 +242,16 @@
     <string name="nav_home">家庭</string>
     <string name="nav_stats">统计</string>
     <string name="nav_focus">焦点</string>
+    <string name="accessibility_service_name">Reef服务</string>
+    <string name="app_description">Reef是一款开源的生产力应用，旨在帮助你减少屏幕时间并提升工作效率。</string>
+    <string name="accessibility_service">无障碍服务</string>
+    <string name="accessibility_service_description">我们使用无障碍服务来屏蔽分散注意力的应用，帮助你专注于工作。</string>
+    <string name="accessibility_service_app_limit">我们使用无障碍服务来强制执行每个应用的屏幕时间限制。</string>
+    <string name="agree">同意</string>
+    <string name="time_remaining">剩余时间: %1$s</string>
+    <string name="focus_mode">专注模式</string>
+    <string name="app_usage">应用用量</string>
+    <string name="app_usage_desc">记录你的屏幕时间</string>
+    <string name="usage_access">使用情况访问</string>
+    <string name="usage_access_description">我们通过使用情况访问权限来跟踪您的应用用量，不会共享或收集任何数据。</string>
 </resources>
