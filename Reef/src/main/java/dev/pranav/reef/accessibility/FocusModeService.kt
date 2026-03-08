@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Intent
 import android.content.Intent.FLAG_RECEIVER_FOREGROUND
 import android.content.pm.ServiceInfo
+import android.media.AudioAttributes
 import android.os.Build
 import android.os.CountDownTimer
 import android.os.IBinder
