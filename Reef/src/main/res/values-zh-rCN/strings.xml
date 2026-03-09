@@ -43,7 +43,7 @@
     <string name="long_break_duration">长时休息时长</string>
     <string name="cycles_before_long_break">长时休息前的循环次数</string>
     <string name="min_suffix">分钟</string>
-    <string name="cycles_suffix">次循环</string>
+    <string name="cycles_suffix">周期</string>
     <string name="notifications_section">通知</string>
     <string name="sound">声音</string>
     <string name="sound_description">在阶段切换时播放声音</string>
