@@ -10,7 +10,7 @@
 </div>
 
 > [!WARNING]
-> This is a personal fork that aims two goals: contributing to the original project and adding features I personally miss/like that have been discarded.
+> This is a personal fork that pursues two goals: contributing to the original project and adding features I personally miss/like that have been discarded.
 > All credits to the original [project](https://github.com/aload0/Reef/)
 
 Reef is an open-source Android app designed to help you reclaim your focus and build healthier
