@@ -1169,7 +1169,7 @@ private fun TimePickerDialog(
     val timePickerState = rememberTimePickerState(
         initialHour = initialTime.hour,
         initialMinute = initialTime.minute,
-        is24Hour = true
+        is24Hour = false
     )
 
     AlertDialog(
@@ -1445,7 +1445,7 @@ private fun loadAccessibleApps(context: android.content.Context): List<Pair<Stri
 }
 
 private fun formatTime(time: LocalTime): String {
-    val formatter = DateTimeFormatter.ofPattern("HH:mm")
+    val formatter = DateTimeFormatter.ofPattern("hh:mm a")
     return time.format(formatter)
 }
 
