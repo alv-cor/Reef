@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.os.UserHandle
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -36,7 +37,8 @@ data class WhitelistedApp(
     val packageName: String,
     val label: String,
     val icon: ImageBitmap,
-    val isWhitelisted: Boolean
+    val isWhitelisted: Boolean,
+    val user: UserHandle
 )
 
 sealed interface AllowedAppsState {
@@ -138,7 +140,7 @@ fun WhitelistScreen(
                         ) {
                             itemsIndexed(
                                 items = uiState.apps,
-                                key = { _, app -> app.packageName }
+                                key = { _, app -> app.packageName + app.user.hashCode() }
                             ) { index, app ->
                                 WhitelistItem(
                                     app = app,

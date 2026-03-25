@@ -42,6 +42,37 @@ object RoutineTimeCalculator {
         return null
     }
 
+    fun getNextWindowStartMs(schedule: RoutineSchedule, now: LocalDateTime): Long? {
+        if (schedule.type == RoutineSchedule.ScheduleType.MANUAL) return null
+        val startTime = schedule.time ?: return null
+        val today = now.toLocalDate()
+
+        return when (schedule.type) {
+            RoutineSchedule.ScheduleType.DAILY -> {
+                val todayStart = LocalDateTime.of(today, startTime)
+                if (now.isBefore(todayStart)) {
+                    todayStart.toEpochMs()
+                } else {
+                    LocalDateTime.of(today.plusDays(1), startTime).toEpochMs()
+                }
+            }
+
+            RoutineSchedule.ScheduleType.WEEKLY -> {
+                if (schedule.daysOfWeek.isEmpty()) return null
+                for (daysAhead in 0..7) {
+                    val candidate = today.plusDays(daysAhead.toLong())
+                    if (candidate.dayOfWeek !in schedule.daysOfWeek) continue
+                    val candidateStart = LocalDateTime.of(candidate, startTime)
+                    if (daysAhead == 0 && !now.isBefore(candidateStart)) continue
+                    return candidateStart.toEpochMs()
+                }
+                null
+            }
+
+            RoutineSchedule.ScheduleType.MANUAL -> null
+        }
+    }
+
     fun getDurationMs(schedule: RoutineSchedule): Long {
         val startTime = schedule.time ?: return 24 * 60 * 60 * 1000L
         val endTime = schedule.endTime ?: return 24 * 60 * 60 * 1000L

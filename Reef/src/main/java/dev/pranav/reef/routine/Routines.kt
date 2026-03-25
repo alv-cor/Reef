@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.core.content.edit
 import dev.pranav.reef.data.Routine
 import dev.pranav.reef.data.RoutineSchedule
+import dev.pranav.reef.services.routines.RoutineAlarmScheduler
 import dev.pranav.reef.services.routines.RoutineSessionManager
 import dev.pranav.reef.util.prefs
 import org.json.JSONArray
@@ -72,6 +73,7 @@ object Routines {
 
         if (!updated.isEnabled) {
             RoutineSessionManager.stopSession(context, id)
+            RoutineAlarmScheduler.cancel(context, id)
         } else {
             when (updated.schedule.type) {
                 RoutineSchedule.ScheduleType.MANUAL -> {
