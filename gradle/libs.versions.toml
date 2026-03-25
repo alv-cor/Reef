@@ -1,14 +1,14 @@
 [versions]
 agp = "9.1.0"
 coreSplashscreen = "1.2.0"
-kotlin = "2.3.10"
-coreKtx = "1.17.0"
+kotlin = "2.3.20"
+coreKtx = "1.18.0"
 appcompat = "1.7.1"
-material = "1.14.0-alpha09"
-activity = "1.12.4"
+activity = "1.13.0"
 googleServices = "4.4.4"
 gson = "2.13.2"
 composeBom = "2026.02.01"
+composeBom = "2026.03.00"
 material3 = "1.5.0-alpha15"
 uiTextGoogleFonts = "1.11.0-alpha06"
 vico = "3.0.3"
@@ -27,7 +27,6 @@ androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", versi
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-activity = { group = "androidx.activity", name = "activity-ktx", version.ref = "activity" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
-
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
 
 # Compose BOM and libraries
