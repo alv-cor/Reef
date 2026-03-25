@@ -46,6 +46,9 @@ object RoutineSessionManager {
         for (session in expired) {
             Log.d(TAG, "Expiring session: ${session.routineId}")
             stopSessionInternal(context, session.routineId)
+            routines.find { it.id == session.routineId }?.let { routine ->
+                if (routine.isEnabled) RoutineAlarmScheduler.scheduleNextStart(context, routine)
+            }
             changed = true
         }
 
@@ -99,8 +102,9 @@ object RoutineSessionManager {
         } else {
             Log.d(
                 TAG,
-                "Routine ${routine.name} is not within schedule window, will activate on schedule"
+                "Routine ${routine.name} is outside schedule window, scheduling alarm for next start"
             )
+            RoutineAlarmScheduler.scheduleNextStart(context, routine)
         }
     }
 
@@ -135,6 +139,9 @@ object RoutineSessionManager {
             TAG,
             "Started session for ${routine.name}: ${limits.size} limits, ${sharedGroups.size} groups, endTime=${if (endTime == 0L) "never" else endTime}"
         )
+        if (endTime > 0L) {
+            RoutineAlarmScheduler.scheduleEnd(context, routine.id, endTime)
+        }
         NotificationHelper.syncRoutineNotification(context)
     }
 
@@ -182,7 +189,8 @@ object RoutineSessionManager {
     }
 
     fun getLimitMs(packageName: String): Long? {
-        val sessions = getActiveSessions()
+        val now = System.currentTimeMillis()
+        val sessions = getActiveSessions().filter { it.endTime == 0L || now < it.endTime }
         if (sessions.isEmpty()) return null
 
         var strictestLimit: Long? = null
@@ -206,7 +214,8 @@ object RoutineSessionManager {
     }
 
     fun getUsageMs(context: Context, packageName: String): Long {
-        val sessions = getActiveSessions()
+        val now = System.currentTimeMillis()
+        val sessions = getActiveSessions().filter { it.endTime == 0L || now < it.endTime }
         if (sessions.isEmpty()) return 0L
 
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager

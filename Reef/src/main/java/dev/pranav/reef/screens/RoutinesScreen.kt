@@ -316,6 +316,6 @@ private fun formatSchedule(schedule: RoutineSchedule?, context: android.content.
 }
 
 private fun formatTime(time: LocalTime): String {
-    val formatter = DateTimeFormatter.ofPattern("HH:mm")
+    val formatter = DateTimeFormatter.ofPattern("hh:mm a")
     return time.format(formatter)
 }

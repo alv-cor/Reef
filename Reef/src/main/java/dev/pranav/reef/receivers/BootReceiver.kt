@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.core.content.edit
 import dev.pranav.reef.accessibility.BlockerService
 import dev.pranav.reef.accessibility.FocusModeService
+import dev.pranav.reef.services.routines.RoutineAlarmScheduler
 import dev.pranav.reef.services.routines.RoutineSessionManager
 import dev.pranav.reef.util.NotificationHelper
 import dev.pranav.reef.util.isAccessibilityServiceEnabledForBlocker
@@ -33,6 +34,10 @@ class BootReceiver: BroadcastReceiver() {
 
                 RoutineSessionManager.evaluateAndSync(safeContext)
                 NotificationHelper.syncRoutineNotification(safeContext)
+                RoutineAlarmScheduler.scheduleAll(
+                    safeContext,
+                    dev.pranav.reef.routine.Routines.getAll()
+                )
 
                 if (prefs.getBoolean("daily_summary", false)) {
                     DailySummaryScheduler.scheduleDailySummary(safeContext)

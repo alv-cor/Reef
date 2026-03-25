@@ -56,9 +56,9 @@ class BlockerService: AccessibilityService() {
         val pkg = event.packageName?.toString() ?: return
 
         if (pkg == packageName) return
-        if (Whitelist.isWhitelisted(pkg)) return
 
         if (prefs.getBoolean("focus_mode", false)) {
+            if (Whitelist.isWhitelisted(pkg)) return
             Log.d("BlockerService", "Blocking $pkg in focus mode")
             performGlobalAction(GLOBAL_ACTION_HOME)
             showFocusModeNotification(pkg)
@@ -67,6 +67,7 @@ class BlockerService: AccessibilityService() {
 
         val blockReason = UsageTracker.checkBlockReason(this, pkg)
         if (blockReason == UsageTracker.BlockReason.NONE) return
+        if (blockReason != UsageTracker.BlockReason.ROUTINE_LIMIT && Whitelist.isWhitelisted(pkg)) return
 
         Log.d("BlockerService", "Blocking $pkg due to ${blockReason.name}")
         performGlobalAction(GLOBAL_ACTION_HOME)
