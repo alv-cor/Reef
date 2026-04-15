@@ -12,10 +12,10 @@ android {
 
     defaultConfig {
         applicationId = "dev.pranav.reef"
-        minSdk = 26
+        minSdk = 36
         targetSdk = 36
-        versionCode = 412
-        versionName = "4.1.2"
+        versionCode = 413
+        versionName = "4.1.3"
     }
 
     viewBinding.enable = true
@@ -39,12 +39,12 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     kotlin.compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_17)
+        jvmTarget.set(JvmTarget.JVM_21)
     }
 
     bundle {
