@@ -26,7 +26,7 @@ object UsageTracker {
         val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val limitWarningsEnabled = prefs.getBoolean("limit_warnings", true)
 
-        // Routine limits are always enforced — whitelist does not bypass them
+        // Routine limits
         RoutineSessionManager.getLimitMs(packageName)?.let { limitMs ->
             val usageMs = RoutineSessionManager.getUsageMs(context, packageName)
 
@@ -45,9 +45,6 @@ object UsageTracker {
                 return BlockReason.ROUTINE_LIMIT
             }
         }
-
-        // Whitelist bypasses daily limits only
-        if (Whitelist.isWhitelisted(packageName)) return BlockReason.NONE
 
         // Check daily limits
         if (AppLimits.hasLimit(packageName)) {
