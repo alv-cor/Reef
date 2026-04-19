@@ -312,11 +312,13 @@
         <item quantity="few">%d приложений</item>
     </plurals>
     <plurals name="app_limits_applied">
-        <item quantity="one">%1$d ограничений приложений</item>
-        <item quantity="few">%1$d ограничений приложений</item>
+        <item quantity="few">%1$d</item>
+        <item quantity="many">%1$d</item>
+        <item quantity="other">%1$d</item>
     </plurals>
     <plurals name="app_will_be_blocked_in">
-        <item quantity="one">%1$s будет заблокирован через %2$d минуту</item>
-        <item quantity="few">%1$s будет заблокирован через %2$d минут</item>
+        <item quantity="few">%1$s будет заблокирован в %2$d минутах</item>
+        <item quantity="many">%1$s будет заблокирован в %2$d минутах</item>
+        <item quantity="other">%1$s будет заблокирован в %2$d минутах</item>
     </plurals>
 </resources>
