@@ -6,8 +6,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.compose.material3.ColorScheme
 import androidx.work.*
-import com.google.android.material.color.DynamicColors
 import dev.pranav.reef.accessibility.BlockerService
 import dev.pranav.reef.receivers.DailySummaryScheduler
 import dev.pranav.reef.services.routines.RoutineAlarmScheduler
@@ -19,13 +19,11 @@ class App: Application(), Configuration.Provider {
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
-            .setMinimumLoggingLevel(android.util.Log.INFO)
+            .setMinimumLoggingLevel(Log.INFO)
             .build()
 
     override fun onCreate() {
         super.onCreate()
-
-        DynamicColors.applyToActivitiesIfAvailable(this)
 
         setupSafePreferences()
 
@@ -79,6 +77,10 @@ class App: Application(), Configuration.Provider {
 
             defaultHandler?.uncaughtException(thread, throwable)
         }
+    }
+
+    companion object {
+        lateinit var colorScheme: ColorScheme
     }
 }
 

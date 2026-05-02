@@ -2,6 +2,7 @@ package dev.pranav.reef.util
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
@@ -11,14 +12,13 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dev.pranav.reef.PermissionsCheckActivity
 import dev.pranav.reef.R
 
 
 fun Activity.showAccessibilityDialog() {
     if (!isAccessibilityServiceEnabledForBlocker()) {
-        MaterialAlertDialogBuilder(this).setTitle(R.string.accessibility_service_name)
+        AlertDialog.Builder(this).setTitle(R.string.accessibility_service_name)
             .setMessage(R.string.accessibility_service_description)
             .setPositiveButton(getString(R.string.agree)) { _, _ ->
                 startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -36,7 +36,7 @@ fun Activity.showAccessibilityDialog() {
 }
 
 fun Activity.showUsageAccessDialog(onAgreeClick: () -> Unit) {
-    MaterialAlertDialogBuilder(this).setTitle(R.string.usage_access)
+    AlertDialog.Builder(this).setTitle(R.string.usage_access)
         .setMessage(R.string.usage_access_description)
         .setPositiveButton(getString(R.string.agree)) { _, _ ->
             onAgreeClick()

@@ -12,13 +12,13 @@ import android.media.AudioAttributes
 import android.os.Build
 import android.os.CountDownTimer
 import android.os.IBinder
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.edit
-import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
-import com.google.android.material.color.MaterialColors
+import dev.pranav.reef.App
 import dev.pranav.reef.MainActivity
 import dev.pranav.reef.R
 import dev.pranav.reef.data.PhaseType
@@ -456,14 +456,8 @@ class FocusModeService: Service() {
 
         notificationStyle = NotificationCompat.ProgressStyle().also { style ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA && state.isPomodoroMode && config != null) {
-                val themedContext = android.view.ContextThemeWrapper(this, R.style.Theme_Reef)
-                val primaryColor = MaterialColors.getColor(
-                    themedContext, android.R.attr.colorPrimary, "#3861d1".toColorInt()
-                )
-                val tertiaryColor = MaterialColors.getColor(
-                    themedContext, com.google.android.material.R.attr.colorTertiaryContainer,
-                    "#e05583".toColorInt()
-                )
+                val primaryColor = App.colorScheme.primary.toArgb()
+                val tertiaryColor = App.colorScheme.tertiaryContainer.toArgb()
                 for (i in 0 until state.totalCycles * 2) {
                     when {
                         i % 2 == 0 -> style.addProgressSegment(
