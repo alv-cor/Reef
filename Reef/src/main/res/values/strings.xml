@@ -158,6 +158,12 @@
     <string name="no_apps_found">No apps found</string>
     <string name="no_apps_match">No apps match your search</string>
     <string name="set_limit_for">Set limit for %1$s</string>
+    <string name="decrease_by_one_minute">Decrease limit by one minute</string>
+    <string name="increase_by_one_minute">Increase limit by one minute</string>
+    <string name="minus_15m">−15m</string>
+    <string name="minus_5m">−5m</string>
+    <string name="plus_5m">+5m</string>
+    <string name="plus_15m">+15m</string>
 
     <plurals name="minutes_label">
         <item quantity="one">%d minute</item>
@@ -185,6 +191,7 @@
     <string name="app_groups">App Groups</string>
     <string name="no_app_groups_desc">No groups added yet\nTap \'Add Group\' to create a group with shared or individual limits</string>
     <string name="remove_group">Remove group</string>
+    <string name="edit_group">Edit group</string>
     <string name="shared_type_label">Shared</string>
     <string name="individual_type_label">Individual</string>
     <string name="shared_limit_suffix"> · %1$s shared</string>
