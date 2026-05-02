@@ -18,4 +18,3 @@ class RoutineAlarmReceiver: BroadcastReceiver() {
         NotificationHelper.syncRoutineNotification(safeContext)
     }
 }
-
