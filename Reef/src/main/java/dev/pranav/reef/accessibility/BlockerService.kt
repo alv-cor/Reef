@@ -4,6 +4,10 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.annotation.SuppressLint
 import android.app.KeyguardManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
@@ -27,6 +31,54 @@ class BlockerService: AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private var keyguardManager: KeyguardManager? = null
     private val notificationManager by lazy { NotificationManagerCompat.from(this) }
+
+    private var activeBrowserPackage: String? = null
+
+    private val screenReceiver = object: BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_SCREEN_OFF -> {
+                    WebsiteUsageTracker.stopTracking()
+                }
+
+                Intent.ACTION_USER_PRESENT, Intent.ACTION_SCREEN_ON -> {
+                    // Start tracking again if we are already in a browser with a domain
+                    // but we will let onAccessibilityEvent handle the current domain state
+                }
+            }
+        }
+    }
+
+    private val websiteLimitPollRunnable = object: Runnable {
+        override fun run() {
+            try {
+                val currentDomain = WebsiteUsageTracker.getCurrentTrackingDomain()
+                if (currentDomain != null && WebsiteLimits.hasLimit(
+                        currentDomain
+                    )
+                ) {
+                    val limit = WebsiteLimits.getLimit(currentDomain)
+                    val usage = WebsiteUsageTracker.getDailyUsage(currentDomain)
+                    Log.d("BlockerService", "limit=$limit, usage=$usage for $currentDomain")
+                    if (usage >= limit) {
+                        WebsiteUsageTracker.stopTracking()
+                        val config = activeBrowserPackage?.let { browserConfigs[it] }
+                        if (config != null) {
+                            performRedirect(config)
+                            showBlockedNotification(
+                                currentDomain,
+                                UsageTracker.BlockReason.DAILY_LIMIT,
+                                isWebsite = true
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("BlockerService", "Website limit poll error", e)
+            }
+            handler.postDelayed(this, 5000L) // Poll every 5 seconds
+        }
+    }
 
     private val routinePollRunnable = object: Runnable {
         override fun run() {
@@ -75,13 +127,24 @@ class BlockerService: AccessibilityService() {
         createNotificationChannel()
         keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
 
+        WebsiteUsageTracker.init(this)
+        WebsiteLimits.init(this)
+
         if (!isPrefsInitialized) {
             val deviceContext = createDeviceProtectedStorageContext()
             prefs = deviceContext.getSharedPreferences("prefs", MODE_PRIVATE)
         }
 
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }
+        registerReceiver(screenReceiver, filter)
+
         scheduleWatcher(this)
         handler.post(routinePollRunnable)
+        handler.post(websiteLimitPollRunnable)
     }
 
     private fun configureService() {
@@ -100,6 +163,15 @@ class BlockerService: AccessibilityService() {
         val pkg = event.packageName?.toString() ?: return
         if (pkg == packageName) return
 
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            if (!browserConfigs.containsKey(pkg)) {
+                WebsiteUsageTracker.stopTracking()
+                activeBrowserPackage = null
+            } else {
+                activeBrowserPackage = pkg
+            }
+        }
+
         val config = browserConfigs[pkg]
         if (config != null) {
             val root = rootInActiveWindow ?: event.source ?: return
@@ -110,11 +182,37 @@ class BlockerService: AccessibilityService() {
 
                     Log.d("BlockerService", "Found url=$url in node $urlBarNode")
                     val domain = sanitizeUrl(url)
+
                     if (WebsiteBlocklist.isBlocked(domain)) {
+                        WebsiteUsageTracker.stopTracking()
                         performRedirect(config)
-                        showBlockedNotification(domain, UsageTracker.BlockReason.DAILY_LIMIT)
+                        showBlockedNotification(
+                            domain,
+                            UsageTracker.BlockReason.DAILY_LIMIT,
+                            isWebsite = true
+                        )
                         return
                     }
+
+                    if (WebsiteLimits.hasLimit(domain)) {
+                        WebsiteUsageTracker.startTracking(domain)
+                        val limit = WebsiteLimits.getLimit(domain)
+                        val usage = WebsiteUsageTracker.getDailyUsage(domain)
+                        if (usage >= limit) {
+                            WebsiteUsageTracker.stopTracking()
+                            performRedirect(config)
+                            showBlockedNotification(
+                                domain,
+                                UsageTracker.BlockReason.DAILY_LIMIT,
+                                isWebsite = true
+                            )
+                            return
+                        }
+                    } else {
+                        WebsiteUsageTracker.stopTracking()
+                    }
+                } else {
+                    WebsiteUsageTracker.stopTracking()
                 }
             }
         }
@@ -203,7 +301,11 @@ class BlockerService: AccessibilityService() {
     }
 
     @SuppressLint("MissingPermission")
-    private fun showBlockedNotification(pkgOrUrl: String, reason: UsageTracker.BlockReason) {
+    private fun showBlockedNotification(
+        pkgOrUrl: String,
+        reason: UsageTracker.BlockReason,
+        isWebsite: Boolean = false
+    ) {
         if (!notificationManager.areNotificationsEnabled()) return
         val appName = try {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkgOrUrl, 0))
@@ -211,16 +313,23 @@ class BlockerService: AccessibilityService() {
             pkgOrUrl
         }
         val contentText = when (reason) {
-            UsageTracker.BlockReason.ROUTINE_LIMIT -> getString(
+            UsageTracker.BlockReason.ROUTINE_LIMIT -> if (isWebsite) getString(R.string.website_blocked_by_routine) else getString(
                 R.string.blocked_by_routine,
                 appName
             )
 
-            else -> getString(R.string.reached_limit, appName)
+            else -> if (isWebsite) getString(
+                R.string.website_reached_limit,
+                appName
+            ) else getString(R.string.reached_limit, appName)
         }
+
+        val titleText =
+            if (isWebsite) getString(R.string.website_blocked) else getString(R.string.app_blocked)
+
         val notification = NotificationCompat.Builder(this, BLOCKER_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle(getString(R.string.app_blocked))
+            .setContentTitle(titleText)
             .setContentText(contentText)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setGroup(BLOCKER_GROUP_KEY)
@@ -259,6 +368,8 @@ class BlockerService: AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        unregisterReceiver(screenReceiver)
+        handler.removeCallbacks(websiteLimitPollRunnable)
         handler.removeCallbacks(routinePollRunnable)
     }
 

@@ -973,7 +973,7 @@ private fun GroupConfigStep(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                listOf(5, 10, 15, 20, 30, 45, 60, 90, 120).forEach { preset ->
+                listOf(0, 5, 15, 30, 45, 60, 90).forEach { preset ->
                     FilterChip(
                         selected = sharedLimitMinutes == preset,
                         onClick = { onSharedLimitChange(preset) },
@@ -1421,7 +1421,7 @@ private fun LimitPickerDialog(
 ) {
     val context = LocalContext.current
     val appIcon = rememberAppIcon(packageName, context)
-    val presets = listOf(0, 5, 10, 30, 45, 60, 120)
+    val presets = listOf(0, 5, 15, 30, 45, 60, 90)
     var minutes by remember { mutableIntStateOf(initialMinutes) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
