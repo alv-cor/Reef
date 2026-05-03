@@ -48,14 +48,15 @@ proven productivity techniques like Pomodoro—all wrapped in a beautiful Materi
 ## Features
 
 - Focus timer with Simple and Pomodoro modes
-- Flexible and Strict modes
-- Automatic Do Not Disturb during focus sessions
 - Per-app daily time limits with warning notifications
-- App blocker
 - Routines — schedule app limits by time and day
+- App blocker
+- Website Blocker
 - App usage statistics with interactive charts
+- Automatic Do Not Disturb during focus sessions
 - Focus session history with detailed breakdowns
 - Customisable Pomodoro durations, sounds, and vibration
+- Flexible and Strict modes
 
 ---
 
