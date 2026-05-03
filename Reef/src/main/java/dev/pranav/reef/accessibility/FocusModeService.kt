@@ -556,7 +556,11 @@ class FocusModeService: Service() {
 
             clearActions()
 
-            if (!isStrictMode) {
+            val state = TimerStateManager.state.value
+            val isBreak =
+                state.pomodoroPhase == PomodoroPhase.SHORT_BREAK || state.pomodoroPhase == PomodoroPhase.LONG_BREAK
+
+            if (!isStrictMode || (!showPauseButton && isBreak && state.isPaused)) {
                 val action = if (showPauseButton) {
                     ACTION_PAUSE to getString(R.string.notification_pause)
                 } else {
