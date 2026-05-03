@@ -46,6 +46,7 @@ fun HomeContent(
     onNavigateToUsage: () -> Unit,
     onNavigateToRoutines: () -> Unit,
     onNavigateToWhitelist: () -> Unit,
+    onNavigateToWebsiteBlocklist: () -> Unit,
     onNavigateToIntro: () -> Unit,
     onRequestAccessibility: () -> Unit,
     @Suppress("UNUSED_PARAMETER") slideProgress: Float = 0f,
@@ -160,6 +161,10 @@ fun HomeContent(
             Spacer(Modifier.height(12.dp))
 
             RoutinesCard(onClick = onNavigateToRoutines)
+
+            Spacer(Modifier.height(12.dp))
+
+            WebsiteBlocklistCard(onClick = onNavigateToWebsiteBlocklist)
 
             Spacer(Modifier.height(12.dp))
 
@@ -564,6 +569,75 @@ private fun RoutinesCard(onClick: () -> Unit) {
 }
 
 @Composable
+private fun WebsiteBlocklistCard(onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        Icons.Rounded.Public, // Ensure this icon is available or replace with a suitable one
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.website_blocklist),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = stringResource(R.string.website_blocklist_desc),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Surface(
+                modifier = Modifier.size(36.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.ArrowForward,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun PomodoroTimerCard(
     onClick: () -> Unit,
     isRunning: Boolean,
@@ -776,6 +850,7 @@ fun HomeContentPreview() {
             onNavigateToUsage = {},
             onNavigateToRoutines = {},
             onNavigateToWhitelist = {},
+            onNavigateToWebsiteBlocklist = {},
             onNavigateToIntro = {},
             onRequestAccessibility = {}
         )

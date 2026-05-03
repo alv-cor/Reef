@@ -1,12 +1,16 @@
 package dev.pranav.reef.accessibility
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.annotation.SuppressLint
+import android.app.KeyguardManager
 import android.content.pm.PackageManager
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import dev.pranav.reef.R
@@ -21,6 +25,9 @@ import dev.pranav.reef.util.NotificationHelper.syncRoutineNotification
 class BlockerService: AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
+    private var keyguardManager: KeyguardManager? = null
+    private val notificationManager by lazy { NotificationManagerCompat.from(this) }
+
     private val routinePollRunnable = object: Runnable {
         override fun run() {
             try {
@@ -33,9 +40,40 @@ class BlockerService: AccessibilityService() {
         }
     }
 
+    private data class BrowserConfig(
+        val urlBarId: String,
+        val suggestionBoxId: String,
+        val isSuggestionBoxEqualToGo: Boolean = false,
+        val suggestionBoxChildIndex: Int = 0
+    )
+
+    private val browserConfigs = mapOf(
+        "com.android.chrome" to BrowserConfig(
+            urlBarId = "com.android.chrome:id/url_bar",
+            suggestionBoxId = "com.android.chrome:id/omnibox_suggestions_dropdown"
+        ),
+        "com.brave.browser" to BrowserConfig(
+            urlBarId = "com.brave.browser:id/url_bar",
+            suggestionBoxId = "com.brave.browser:id/omnibox_suggestions_dropdown"
+        ),
+        "org.mozilla.firefox" to BrowserConfig(
+            urlBarId = "org.mozilla.firefox:id/mozac_browser_toolbar_url_view",
+            suggestionBoxId = "org.mozilla.firefox:id/sfcnt"
+        ),
+        "com.opera.browser" to BrowserConfig(
+            urlBarId = "com.opera.browser:id/url_field",
+            suggestionBoxId = "com.opera.browser:id/right_state_button",
+            isSuggestionBoxEqualToGo = true
+        )
+    )
+
+    private val redirectUrl = "about:blank"
+
     override fun onServiceConnected() {
         super.onServiceConnected()
+        configureService()
         createNotificationChannel()
+        keyguardManager = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
 
         if (!isPrefsInitialized) {
             val deviceContext = createDeviceProtectedStorageContext()
@@ -46,48 +84,132 @@ class BlockerService: AccessibilityService() {
         handler.post(routinePollRunnable)
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        val keyguardManager = getSystemService(KEYGUARD_SERVICE) as android.app.KeyguardManager
-        if (keyguardManager.isKeyguardLocked) return
+    private fun configureService() {
+        serviceInfo = AccessibilityServiceInfo().apply {
+            eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
+                    AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+            feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+            flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+            notificationTimeout = 100
+        }
+    }
 
-        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) return
-        if (event.contentChangeTypes == AccessibilityEvent.CONTENT_CHANGE_TYPE_CONTENT_DESCRIPTION) return
+    override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        if (keyguardManager?.isKeyguardLocked == true) return
 
         val pkg = event.packageName?.toString() ?: return
-
         if (pkg == packageName) return
 
+        val config = browserConfigs[pkg]
+        if (config != null) {
+            val root = rootInActiveWindow ?: event.source ?: return
+            val urlBarNode = findUrlBarNode(root, config.urlBarId)
+            if (urlBarNode != null) {
+                val url = extractUrlFromNode(urlBarNode)
+                if (url != null) {
+
+                    Log.d("BlockerService", "Found url=$url in node $urlBarNode")
+                    val domain = sanitizeUrl(url)
+                    if (WebsiteBlocklist.isBlocked(domain)) {
+                        performRedirect(config)
+                        showBlockedNotification(domain, UsageTracker.BlockReason.DAILY_LIMIT)
+                        return
+                    }
+                }
+            }
+        }
+
+        if (Whitelist.isWhitelisted(pkg)) return
+
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
+            event.contentChangeTypes != AccessibilityEvent.CONTENT_CHANGE_TYPE_CONTENT_DESCRIPTION
+        ) {
+            handleAppBlockCheck(pkg)
+        }
+    }
+
+    private fun findUrlBarNode(
+        root: AccessibilityNodeInfo,
+        fullId: String
+    ): AccessibilityNodeInfo? {
+        val nodes = root.findAccessibilityNodeInfosByViewId(fullId)
+        return if (!nodes.isNullOrEmpty()) nodes[0] else null
+    }
+
+    private fun extractUrlFromNode(node: AccessibilityNodeInfo): String? {
+        if (node.isFocused) return null
+        val text = node.text?.toString() ?: return null
+        if (text.isBlank() || !text.contains('.') || text.contains(' ')) return null
+        return text
+    }
+
+    private fun sanitizeUrl(url: String): String {
+        return url.lowercase()
+            .replace("https://", "")
+            .replace("http://", "")
+            .replace("www.", "")
+            .substringBefore('/')
+    }
+
+    private fun performRedirect(config: BrowserConfig) {
+        val initialRoot = rootInActiveWindow ?: return
+        val urlBar = findUrlBarNode(initialRoot, config.urlBarId) ?: return
+        urlBar.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+
+        handler.postDelayed({
+            val editRoot = rootInActiveWindow ?: return@postDelayed
+            val editText = findUrlBarNode(editRoot, config.urlBarId) ?: return@postDelayed
+            val args = Bundle().apply {
+                putCharSequence(
+                    AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                    redirectUrl
+                )
+            }
+            editText.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+
+            handler.postDelayed({
+                val finalRoot = rootInActiveWindow ?: return@postDelayed
+                performGoAction(finalRoot, config)
+            }, 300)
+        }, 300)
+    }
+
+    private fun performGoAction(root: AccessibilityNodeInfo, config: BrowserConfig) {
+        val nodes = root.findAccessibilityNodeInfosByViewId(config.suggestionBoxId) ?: return
+        val box = nodes.firstOrNull() ?: return
+        if (config.isSuggestionBoxEqualToGo) {
+            box.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+        } else {
+            val child = box.getChild(config.suggestionBoxChildIndex)
+            if (child != null) {
+                child.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            }
+        }
+    }
+
+    private fun handleAppBlockCheck(pkg: String) {
         if (prefs.getBoolean("focus_mode", false)) {
-            if (Whitelist.isWhitelisted(pkg)) return
-            Log.d("BlockerService", "Blocking $pkg in focus mode")
+            FocusStats.recordBlockEvent(pkg, "focus_mode")
             performGlobalAction(GLOBAL_ACTION_HOME)
             showFocusModeNotification(pkg)
             return
         }
 
         val blockReason = UsageTracker.checkBlockReason(this, pkg)
-        if (blockReason == UsageTracker.BlockReason.NONE) return
-        if (blockReason != UsageTracker.BlockReason.ROUTINE_LIMIT && Whitelist.isWhitelisted(pkg)) return
-
-        Log.d("BlockerService", "Blocking $pkg due to ${blockReason.name}")
-        performGlobalAction(GLOBAL_ACTION_HOME)
-        showBlockedNotification(pkg, blockReason)
+        if (blockReason != UsageTracker.BlockReason.NONE) {
+            performGlobalAction(GLOBAL_ACTION_HOME)
+            showBlockedNotification(pkg, blockReason)
+        }
     }
 
     @SuppressLint("MissingPermission")
-    private fun showBlockedNotification(pkg: String, reason: UsageTracker.BlockReason) {
-        val manager = NotificationManagerCompat.from(this)
-        if (manager.areNotificationsEnabled().not()) {
-            Log.w("BlockerService", "Notifications disabled by user")
-            return
-        }
-
+    private fun showBlockedNotification(pkgOrUrl: String, reason: UsageTracker.BlockReason) {
+        if (!notificationManager.areNotificationsEnabled()) return
         val appName = try {
-            packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0))
+            packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkgOrUrl, 0))
         } catch (_: PackageManager.NameNotFoundException) {
-            pkg
+            pkgOrUrl
         }
-
         val contentText = when (reason) {
             UsageTracker.BlockReason.ROUTINE_LIMIT -> getString(
                 R.string.blocked_by_routine,
@@ -96,7 +218,6 @@ class BlockerService: AccessibilityService() {
 
             else -> getString(R.string.reached_limit, appName)
         }
-
         val notification = NotificationCompat.Builder(this, BLOCKER_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(getString(R.string.app_blocked))
@@ -105,30 +226,25 @@ class BlockerService: AccessibilityService() {
             .setGroup(BLOCKER_GROUP_KEY)
             .setAutoCancel(true)
             .build()
+        notificationManager.notify(pkgOrUrl.hashCode(), notification)
 
         val summary = NotificationCompat.Builder(this, BLOCKER_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setGroup(BLOCKER_GROUP_KEY)
             .setGroupSummary(true)
             .build()
-
-        manager.notify(pkg.hashCode(), notification)
-        manager.notify(NotificationHelper.BLOCKER_SUMMARY_ID, summary)
+        notificationManager.notify(NotificationHelper.BLOCKER_SUMMARY_ID, summary)
     }
 
     @SuppressLint("MissingPermission")
     private fun showFocusModeNotification(pkg: String) {
-        FocusStats.recordBlockEvent(pkg, "focus_mode")
-
-        if (NotificationManagerCompat.from(this).areNotificationsEnabled().not()) return
+        if (!notificationManager.areNotificationsEnabled()) return
         if (!prefs.getBoolean("focus_reminders", true)) return
-
         val appName = try {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0))
         } catch (_: PackageManager.NameNotFoundException) {
             pkg
         }
-
         val notification = NotificationCompat.Builder(this, BLOCKER_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(getString(R.string.distraction_blocked))
@@ -136,8 +252,7 @@ class BlockerService: AccessibilityService() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .build()
-
-        NotificationManagerCompat.from(this).notify(pkg.hashCode(), notification)
+        notificationManager.notify("focus_$pkg".hashCode(), notification)
     }
 
     override fun onInterrupt() {}

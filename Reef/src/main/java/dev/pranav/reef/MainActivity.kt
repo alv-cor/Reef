@@ -13,7 +13,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -50,6 +49,7 @@ import dev.pranav.reef.timer.TimerConfig
 import dev.pranav.reef.timer.TimerContent
 import dev.pranav.reef.timer.TimerStateManager
 import dev.pranav.reef.ui.ReefTheme
+import dev.pranav.reef.ui.blocklist.WebsiteBlocklistScreen
 import dev.pranav.reef.ui.focusstats.FocusSessionDetailScreen
 import dev.pranav.reef.ui.focusstats.FocusStatsScreen
 import dev.pranav.reef.util.*
@@ -300,6 +300,7 @@ class MainActivity: ComponentActivity() {
                                 onNavigateToUsage = { navController.navigate(Screen.Usage) },
                                 onNavigateToRoutines = { navController.navigate(Screen.Routines) },
                                 onNavigateToWhitelist = { navController.navigate(Screen.Whitelist) },
+                                onNavigateToWebsiteBlocklist = { navController.navigate(Screen.WebsiteBlocklist) },
                                 onNavigateToIntro = {
                                     startActivity(
                                         Intent(
@@ -451,6 +452,10 @@ class MainActivity: ComponentActivity() {
                                 sessionId = route.sessionId,
                                 onBackPressed = { navController.popBackStack() }
                             )
+                        }
+
+                        composable<Screen.WebsiteBlocklist> {
+                            WebsiteBlocklistScreen(onBackPressed = { navController.popBackStack() })
                         }
                     }
                 }

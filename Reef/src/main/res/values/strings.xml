@@ -336,6 +336,8 @@
     <!-- Notification Helper strings -->
     <string name="blocker_channel_name">Content Blocker</string>
     <string name="blocker_channel_description">Shows reminders for screen time and when apps are blocked.</string>
+    <string name="website_blocklist">Website Blocklist</string>
+    <string name="website_blocklist_desc">Manage blocked websites</string>
     <string name="no_usage_data">No usage data available</string>
     <string name="routine_activated">Routine Activated</string>
     <string name="routine_deactivated">Routine Deactivated</string>

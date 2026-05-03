@@ -30,6 +30,7 @@ class App: Application(), Configuration.Provider {
         AppLimits.init(this)
         Whitelist.init(this)
         FocusStats.init(this)
+        WebsiteBlocklist.init(this)
 
         scheduleWatcher(this)
 
