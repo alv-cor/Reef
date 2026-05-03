@@ -217,8 +217,6 @@ class BlockerService: AccessibilityService() {
             }
         }
 
-        if (Whitelist.isWhitelisted(pkg)) return
-
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
             event.contentChangeTypes != AccessibilityEvent.CONTENT_CHANGE_TYPE_CONTENT_DESCRIPTION
         ) {
@@ -287,6 +285,8 @@ class BlockerService: AccessibilityService() {
 
     private fun handleAppBlockCheck(pkg: String) {
         if (prefs.getBoolean("focus_mode", false)) {
+            if (Whitelist.isWhitelisted(pkg)) return
+
             FocusStats.recordBlockEvent(pkg, "focus_mode")
             performGlobalAction(GLOBAL_ACTION_HOME)
             showFocusModeNotification(pkg)
