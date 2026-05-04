@@ -25,8 +25,8 @@
     <string name="accessibility_service">Bedienungshilfe-Dienst</string>
     <string name="accessibility_service_description">Wir nutzen den Bedienungshilfe-Dienst, um Apps zu blockieren und Ihnen dabei zu helfen, sich auf die Arbeit zu konzentrieren.</string>
     <string name="accessibility_service_app_limit">Wir nutzen den Bedienungshilfe-Dienst, um Bildschirmzeitlimits für bestimmte Apps umzusetzen.</string>
-    <string name="agree">Okay</string>
-    <string name="time_remaining">Verbleibende Zeit: %1$s</string>
+    <string name="agree">Grad</string>
+    <string name="time_remaining">Dauer: %1$s</string>
     <string name="focus_mode">Fokusmodus</string>
     <string name="app_usage">Appnutzung</string>
     <string name="app_usage_desc">Verfolgen Sie Ihre Bildschirmzeit</string>
@@ -207,7 +207,7 @@
     <string name="no_app_limits_set">Keine App-Limits gesetzt</string>
     <string name="unknown_schedule">Unbekannter Zeitplan</string>
     <string name="schedule_from_to">" von %1$s bis %2$s"</string>
-    <string name="schedule_at">um %1$s</string>
+    <string name="schedule_at">bei %1$s</string>
     <string name="every_day">Jeden Tag</string>
     <string name="weekdays">Wochentage</string>
     <string name="weekends">Wochenenden</string>
@@ -236,7 +236,7 @@
     <string name="long_break_label">Lange Pause</string>
     <string name="cycles_label">Zyklen</string>
     <string name="start_pomodoro">Pomodoro starten</string>
-    <string name="decrease">Verringern</string>
+    <string name="decrease">Rückgang</string>
     <string name="increase">Erhöhen</string>
     <string name="cycle_count">Zyklus %1$d/%2$d</string>
     <string name="take_a_break_message">Machen Sie eine Pause, Apps sind entsperrt</string>
@@ -314,7 +314,7 @@
     <string name="sample_routine">Planen Sie zum Beispiel um 14:00 Uhr eine „Deep Work“-Routine ein</string>
     <string name="start_focus_session">Eine Fokussitzung starten</string>
     <string name="paused_focus_session">Pausiert • %1$s</string>
-    <string name="in_progress_focus_session">In Bearbeitung • %1$s</string>
+    <string name="in_progress_focus_session">• %1$s</string>
     <string name="routine_active_single">%1$s aktiv</string>
     <string name="active_routines_list">Aktiv: %1$s</string>
     <string name="nav_home">Home</string>
