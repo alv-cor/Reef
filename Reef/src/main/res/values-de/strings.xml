@@ -310,7 +310,7 @@
     <string name="break_ended_message">Zeit, wieder an die Arbeit zu gehen. Ihre Fokussitzung beginnt jetzt.</string>
     <string name="slide">Wischen</string>
     <string name="release">Release</string>
-    <string name="slide_description">Wischen, um mit konzentriertem \nArbeiten zu beginnen</string>
+    <string name="slide_description">Wischen, um mit konzentriertem Arbeiten zu beginnen\nSitzung</string>
     <string name="sample_routine">Planen Sie zum Beispiel um 14:00 Uhr eine „Deep Work“-Routine ein</string>
     <string name="start_focus_session">Eine Fokussitzung starten</string>
     <string name="paused_focus_session">Pausiert • %1$s</string>
