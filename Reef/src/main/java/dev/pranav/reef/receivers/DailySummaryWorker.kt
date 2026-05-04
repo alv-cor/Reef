@@ -74,6 +74,7 @@ class DailySummaryWorker(
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setSmallIcon(R.mipmap.ic_launcher)
             .build()
 
         if (ActivityCompat.checkSelfPermission(

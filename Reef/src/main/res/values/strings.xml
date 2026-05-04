@@ -158,6 +158,12 @@
     <string name="no_apps_found">No apps found</string>
     <string name="no_apps_match">No apps match your search</string>
     <string name="set_limit_for">Set limit for %1$s</string>
+    <string name="decrease_by_one_minute">Decrease limit by one minute</string>
+    <string name="increase_by_one_minute">Increase limit by one minute</string>
+    <string name="minus_15m">−15m</string>
+    <string name="minus_5m">−5m</string>
+    <string name="plus_5m">+5m</string>
+    <string name="plus_15m">+15m</string>
 
     <plurals name="minutes_label">
         <item quantity="one">%d minute</item>
@@ -185,6 +191,7 @@
     <string name="app_groups">App Groups</string>
     <string name="no_app_groups_desc">No groups added yet\nTap \'Add Group\' to create a group with shared or individual limits</string>
     <string name="remove_group">Remove group</string>
+    <string name="edit_group">Edit group</string>
     <string name="shared_type_label">Shared</string>
     <string name="individual_type_label">Individual</string>
     <string name="shared_limit_suffix"> · %1$s shared</string>
@@ -326,9 +333,34 @@
     <string name="distraction_blocked">Distraction Blocked</string>
     <string name="you_were_using">You were using %1$s</string>
 
+    <!-- Website Blocker strings -->
+    <string name="website_blocked">Website Blocked</string>
+    <string name="website_blocked_by_routine">Website blocked by active routine</string>
+    <string name="website_reached_limit">%1$s limit reached</string>
+    <string name="add_website">Add Website</string>
+    <string name="edit_website">Edit Website</string>
+    <string name="domain_hint">Domain (e.g. facebook.com)</string>
+    <string name="block_type">Block Type</string>
+    <string name="always_block">Always Block</string>
+    <string name="daily_limit">Daily Limit</string>
+    <string name="website_always_block_desc">This website will be permanently blocked.</string>
+    <string name="website_daily_limit_desc">This website will be blocked after reaching the set daily time limit.</string>
+    <string name="daily_time_limit">Daily Time Limit</string>
+    <string name="permanently_blocked">Permanently Blocked</string>
+    <string name="daily_limits">Daily Limits</string>
+    <string name="always_blocked">Always blocked</string>
+    <string name="blocked_websites">Blocked Websites</string>
+    <string name="blocked_websites_desc">These websites will be blocked during your focus sessions and active routines.</string>
+    <string name="no_websites_added">No websites added</string>
+    <string name="add_websites_desc">Add websites to block them or set time limits</string>
+    <string name="limit_format">Limit: %1$s</string>
+    <string name="save">Save</string>
+
     <!-- Notification Helper strings -->
     <string name="blocker_channel_name">Content Blocker</string>
     <string name="blocker_channel_description">Shows reminders for screen time and when apps are blocked.</string>
+    <string name="website_blocklist">Website Blocklist</string>
+    <string name="website_blocklist_desc">Manage blocked websites</string>
     <string name="no_usage_data">No usage data available</string>
     <string name="routine_activated">Routine Activated</string>
     <string name="routine_deactivated">Routine Deactivated</string>

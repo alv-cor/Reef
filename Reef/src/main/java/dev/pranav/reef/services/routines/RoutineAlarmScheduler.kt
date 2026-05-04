@@ -61,4 +61,3 @@ object RoutineAlarmScheduler {
     private fun startRequestCode(routineId: String) = "start:$routineId".hashCode()
     private fun endRequestCode(routineId: String) = "end:$routineId".hashCode()
 }
-

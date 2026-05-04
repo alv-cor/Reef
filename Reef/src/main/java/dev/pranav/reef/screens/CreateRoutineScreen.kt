@@ -13,10 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material3.*
@@ -71,6 +68,7 @@ fun CreateRoutineScreen(
     var showGroupCreator by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var editingLimit by remember { mutableStateOf<Routine.AppLimit?>(null) }
+    var editingGroup by remember { mutableStateOf<Routine.AppGroup?>(null) }
 
     LaunchedEffect(routineId) {
         routineId?.let {
@@ -210,7 +208,7 @@ fun CreateRoutineScreen(
                             )
                             FilledTonalButton(
                                 onClick = { showEndTimePicker = true },
-                                shape = RoundedCornerShape(12.dp)
+                                shapes = ButtonDefaults.shapes()
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.AccessTime,
@@ -372,6 +370,10 @@ fun CreateRoutineScreen(
                     appGroups.forEach { group ->
                         AppGroupItem(
                             group = group,
+                            onEdit = {
+                                editingGroup = group
+                                showGroupCreator = true
+                            },
                             onRemove = {
                                 appGroups = appGroups.filter { it.id != group.id }
                             },
@@ -481,6 +483,7 @@ fun CreateRoutineScreen(
             }
         }
         LimitPickerDialog(
+            packageName = limit.packageName,
             appName = editAppName,
             initialMinutes = limit.limitMinutes,
             onConfirm = { newMinutes ->
@@ -495,11 +498,20 @@ fun CreateRoutineScreen(
 
     if (showGroupCreator) {
         CreateGroupDialog(
-            onGroupCreated = { group ->
-                appGroups = appGroups + group
+            onGroupSaved = { group ->
+                appGroups = if (editingGroup != null) {
+                    appGroups.map { if (it.id == group.id) group else it }
+                } else {
+                    appGroups + group
+                }
                 showGroupCreator = false
+                editingGroup = null
             },
-            onDismiss = { showGroupCreator = false }
+            onDismiss = {
+                showGroupCreator = false
+                editingGroup = null
+            },
+            initialGroup = editingGroup
         )
     }
 
@@ -614,6 +626,7 @@ private fun AppLimitItem(
 @Composable
 private fun AppGroupItem(
     group: Routine.AppGroup,
+    onEdit: () -> Unit,
     onRemove: () -> Unit,
     context: android.content.Context
 ) {
@@ -670,6 +683,17 @@ private fun AppGroupItem(
             }
 
             IconButton(
+                onClick = onEdit,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = stringResource(R.string.edit_group),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            IconButton(
                 onClick = onRemove,
                 modifier = Modifier.size(40.dp)
             ) {
@@ -686,17 +710,34 @@ private fun AppGroupItem(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun CreateGroupDialog(
-    onGroupCreated: (Routine.AppGroup) -> Unit,
-    onDismiss: () -> Unit
+    onGroupSaved: (Routine.AppGroup) -> Unit,
+    onDismiss: () -> Unit,
+    initialGroup: Routine.AppGroup? = null
 ) {
     val context = LocalContext.current
 
     var step by remember { mutableIntStateOf(0) }
-    var groupName by remember { mutableStateOf("") }
-    var groupType by remember { mutableStateOf(Routine.AppGroup.GroupType.SHARED) }
-    var sharedLimitMinutes by remember { mutableIntStateOf(30) }
-    var selectedPackages by remember { mutableStateOf(setOf<String>()) }
-    var individualLimits by remember { mutableStateOf(mapOf<String, Int>()) }
+    var groupName by remember(initialGroup) { mutableStateOf(initialGroup?.name ?: "") }
+    var groupType by remember(initialGroup) {
+        mutableStateOf(
+            initialGroup?.type ?: Routine.AppGroup.GroupType.SHARED
+        )
+    }
+    var sharedLimitMinutes by remember(initialGroup) {
+        mutableIntStateOf(
+            initialGroup?.sharedLimitMinutes ?: 30
+        )
+    }
+    var selectedPackages by remember(initialGroup) {
+        mutableStateOf(
+            initialGroup?.packageNames?.toSet() ?: emptySet()
+        )
+    }
+    var individualLimits by remember(initialGroup) {
+        mutableStateOf(
+            initialGroup?.individualLimits ?: emptyMap()
+        )
+    }
     var limitDialogForPackage by remember { mutableStateOf<String?>(null) }
 
     var allApps by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
@@ -756,9 +797,9 @@ private fun CreateGroupDialog(
                     onBack = { step = 0 },
                     onNext = {
                         if (groupType == Routine.AppGroup.GroupType.SHARED) {
-                            onGroupCreated(
+                            onGroupSaved(
                                 Routine.AppGroup(
-                                    id = UUID.randomUUID().toString(),
+                                    id = initialGroup?.id ?: UUID.randomUUID().toString(),
                                     name = groupName,
                                     type = Routine.AppGroup.GroupType.SHARED,
                                     packageNames = selectedPackages.toList(),
@@ -766,7 +807,11 @@ private fun CreateGroupDialog(
                                 )
                             )
                         } else {
-                            individualLimits = selectedPackages.associateWith { 30 }
+                            individualLimits =
+                                individualLimits.filterKeys { it in selectedPackages } +
+                                        selectedPackages.associateWith {
+                                            individualLimits[it] ?: 30
+                                        }
                             step = 2
                         }
                     }
@@ -784,9 +829,9 @@ private fun CreateGroupDialog(
                     onDismissLimitDialog = { limitDialogForPackage = null },
                     onBack = { step = 1 },
                     onCreateGroup = {
-                        onGroupCreated(
+                        onGroupSaved(
                             Routine.AppGroup(
-                                id = UUID.randomUUID().toString(),
+                                id = initialGroup?.id ?: UUID.randomUUID().toString(),
                                 name = groupName,
                                 type = Routine.AppGroup.GroupType.INDIVIDUAL,
                                 packageNames = selectedPackages.toList(),
@@ -928,7 +973,7 @@ private fun GroupConfigStep(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                listOf(5, 10, 15, 20, 30, 45, 60, 90, 120).forEach { preset ->
+                listOf(0, 5, 15, 30, 45, 60, 90).forEach { preset ->
                     FilterChip(
                         selected = sharedLimitMinutes == preset,
                         onClick = { onSharedLimitChange(preset) },
@@ -977,6 +1022,7 @@ private fun AppSelectStep(
     onBack: () -> Unit,
     onNext: () -> Unit
 ) {
+    val context = LocalContext.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -1023,19 +1069,42 @@ private fun AppSelectStep(
                 .fillMaxHeight(0.5f)
         ) {
             items(filteredApps) { (packageName, appName) ->
+                val appIcon = rememberAppIcon(packageName, context)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onTogglePackage(packageName) }
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    Surface(
+                        modifier = Modifier.size(40.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        appIcon?.let { icon ->
+                            Image(
+                                bitmap = icon.toBitmap().asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(appName, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = packageName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
                     Checkbox(
                         checked = packageName in selectedPackages,
                         onCheckedChange = { onTogglePackage(packageName) }
                     )
-                    Text(appName, style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
@@ -1147,6 +1216,7 @@ private fun IndividualLimitsStep(
         val appName =
             allApps.find { it.first == limitDialogForPackage }?.second ?: limitDialogForPackage
         LimitPickerDialog(
+            packageName = limitDialogForPackage,
             appName = appName,
             initialMinutes = individualLimits[limitDialogForPackage] ?: 30,
             onConfirm = { minutes ->
@@ -1281,16 +1351,44 @@ private fun AppSelectorDialog(
                         .fillMaxHeight(0.6f)
                 ) {
                     items(filteredApps) { (packageName, appName) ->
+                        val appIcon = rememberAppIcon(packageName, context)
                         TextButton(
                             onClick = { selectedApp = packageName to appName },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text(
-                                text = appName,
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = TextAlign.Start
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Surface(
+                                    modifier = Modifier.size(40.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                ) {
+                                    appIcon?.let { icon ->
+                                        Image(
+                                            bitmap = icon.toBitmap().asImageBitmap(),
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = appName,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        text = packageName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -1306,20 +1404,24 @@ private fun AppSelectorDialog(
                 onAppSelected(packageName, appName, minutes)
                 selectedApp = null
             },
+            packageName = packageName,
             onDismiss = { selectedApp = null }
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun LimitPickerDialog(
+    packageName: String,
     appName: String,
     initialMinutes: Int = 15,
     onConfirm: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val presets = listOf(5, 10, 15, 20, 30, 45, 60, 90, 120)
+    val context = LocalContext.current
+    val appIcon = rememberAppIcon(packageName, context)
+    val presets = listOf(0, 5, 15, 30, 45, 60, 90)
     var minutes by remember { mutableIntStateOf(initialMinutes) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -1331,61 +1433,134 @@ private fun LimitPickerDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            Text(
-                text = stringResource(R.string.set_limit_for, appName),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
-
-            // Big value display
-            Text(
-                text = if (minutes == 0) stringResource(R.string.block_entirely)
-                else formatLimitTime(minutes),
-                style = MaterialTheme.typography.displaySmall,
-                color = if (minutes == 0) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.primary,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
-
-            // Stepper row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FilledTonalButton(
-                    onClick = {
-                        if (minutes >= 15) minutes -= 15 else if (minutes > 0) minutes = 0
-                    },
-                    enabled = minutes > 0,
-                    shape = RoundedCornerShape(12.dp)
-                ) { Text("−15m") }
+                Surface(
+                    modifier = Modifier.size(44.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        if (appIcon != null) {
+                            Image(
+                                bitmap = appIcon.toBitmap().asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Apps,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
 
-                FilledTonalButton(
-                    onClick = { if (minutes >= 5) minutes -= 5 else if (minutes > 0) minutes = 0 },
-                    enabled = minutes > 0,
-                    shape = RoundedCornerShape(12.dp)
-                ) { Text("−5m") }
+                Spacer(modifier = Modifier.width(16.dp))
 
-                FilledTonalButton(
-                    onClick = { minutes += 5 },
-                    shape = RoundedCornerShape(12.dp)
-                ) { Text("+5m") }
-
-                FilledTonalButton(
-                    onClick = { minutes += 15 },
-                    shape = RoundedCornerShape(12.dp)
-                ) { Text("+15m") }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = appName,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = stringResource(R.string.set_limit_for, appName),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
             }
 
-            HorizontalDivider()
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Preset chips
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    FilledTonalIconButton(
+                        onClick = { if (minutes > 0) minutes -= 1 },
+                        enabled = minutes > 0,
+                        modifier = Modifier.size(48.dp),
+                        shapes = IconButtonDefaults.shapes()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Remove,
+                            contentDescription = stringResource(R.string.decrease_by_one_minute)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(32.dp))
+
+                    Text(
+                        text = if (minutes == 0) stringResource(R.string.block_entirely)
+                        else formatLimitTime(minutes),
+                        style = MaterialTheme.typography.displaySmallEmphasized,
+                        color = if (minutes == 0) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.width(32.dp))
+
+                    FilledTonalIconButton(
+                        onClick = { minutes += 1 },
+                        modifier = Modifier.size(48.dp),
+                        shapes = IconButtonDefaults.shapes()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = stringResource(R.string.increase_by_one_minute)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    -15 to stringResource(R.string.minus_15m),
+                    -5 to stringResource(R.string.minus_5m),
+                    5 to stringResource(R.string.plus_5m),
+                    15 to stringResource(R.string.plus_15m)
+                )
+                    .forEach { (delta, label) ->
+                        FilledTonalButton(
+                            onClick = {
+                                minutes = when {
+                                    delta < 0 -> maxOf(0, minutes + delta)
+                                    else -> minutes + delta
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(18.dp),
+                            contentPadding = PaddingValues(vertical = 10.dp)
+                        ) {
+                            Text(label)
+                        }
+                    }
+            }
+
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -1394,24 +1569,19 @@ private fun LimitPickerDialog(
                     FilterChip(
                         selected = minutes == preset,
                         onClick = { minutes = preset },
-                        label = { Text(formatLimitTime(preset)) }
+                        label = {
+                            Text(
+                                text = formatLimitTime(preset)
+                            )
+                        }
                     )
                 }
-                FilterChip(
-                    selected = minutes == 0,
-                    onClick = { minutes = 0 },
-                    label = { Text(stringResource(R.string.block_entirely)) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                )
             }
 
             Button(
                 onClick = { onConfirm(minutes) },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp)
+                shapes = ButtonDefaults.shapes()
             ) {
                 Text(stringResource(R.string.save_routine))
             }
@@ -1440,8 +1610,8 @@ private fun loadAccessibleApps(context: android.content.Context): List<Pair<Stri
     return pm.getInstalledApplications(0)
         .filter { it.packageName != context.packageName }
         .filter { it.packageName in accessible }
-        .sortedBy { pm.getApplicationLabel(it).toString() }
-        .map { it.packageName to pm.getApplicationLabel(it).toString() }
+        .sortedBy { it.name }
+        .map { it.packageName to it.loadLabel(pm).toString() }
 }
 
 private fun formatTime(time: LocalTime): String {
@@ -1455,6 +1625,23 @@ private fun formatLimitTime(minutes: Int, context: android.content.Context): Str
         minutes % 60 == 0 -> context.getString(R.string.hours_short_format, minutes / 60)
         else -> context.getString(R.string.hour_min_short_suffix, minutes / 60, minutes % 60)
     }
+}
+
+@Composable
+private fun rememberAppIcon(
+    packageName: String,
+    context: android.content.Context
+): Drawable? {
+    var icon by remember(packageName) { mutableStateOf<Drawable?>(null) }
+    LaunchedEffect(packageName) {
+        withContext(Dispatchers.IO) {
+            try {
+                icon = context.packageManager.getApplicationIcon(packageName)
+            } catch (_: Exception) {
+            }
+        }
+    }
+    return icon
 }
 
 private fun formatLimitTime(minutes: Int): String {
@@ -1509,3 +1696,4 @@ private fun saveRoutine(
     Routines.save(routine, context)
     return true
 }
+

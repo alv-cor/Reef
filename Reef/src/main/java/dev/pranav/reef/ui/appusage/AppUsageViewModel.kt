@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.columnSeries
 import dev.pranav.reef.util.ScreenUsageHelper
+import dev.pranav.reef.util.Whitelist
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -210,7 +211,7 @@ class AppUsageViewModel(
 
     private fun processUsageMap(usageMap: Map<String, Long>): List<AppUsageStats> {
         return usageMap
-            .filter { it.value > 5000 && it.key != packageName }
+            .filter { it.value > 5000 && it.key != packageName && !Whitelist.isWhitelisted(it.key) }
             .mapNotNull { (pkg, totalTime) ->
                 try {
                     if (packageManager.getLaunchIntentForPackage(pkg) == null) return@mapNotNull null
@@ -310,7 +311,8 @@ class AppUsageViewModel(
                     context, usageStatsManager,
                     startMillis,
                     endMillis
-                ).filter { it.key != packageName }.values.sum()
+                )
+                    .filter { (pkg, _) -> pkg != packageName && !Whitelist.isWhitelisted(pkg) }.values.sum()
             } else 0L
 
             result.add(
@@ -355,7 +357,8 @@ class AppUsageViewModel(
                         context, usageStatsManager,
                         start.timeInMillis,
                         end.timeInMillis
-                    ).values.any { it > 0 }
+                    )
+                        .filter { (pkg, _) -> pkg != packageName && !Whitelist.isWhitelisted(pkg) }.values.any { it > 0 }
                 ) {
                     hasData = true
                     break

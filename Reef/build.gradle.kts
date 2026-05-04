@@ -8,14 +8,14 @@ plugins {
 
 android {
     namespace = "dev.pranav.reef"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "dev.pranav.reef"
         minSdk = 36
         targetSdk = 36
-        versionCode = 413
-        versionName = "4.1.3"
+        versionCode = 420
+        versionName = "4.2.0"
     }
 
     viewBinding.enable = true
@@ -57,8 +57,6 @@ android {
         // Disables dependency metadata when building Android App Bundles (for Google Play)
         includeInBundle = false
     }
-    buildToolsVersion = "36.1.0"
-    compileSdkMinor = 1
 
     packaging.resources {
         excludes += "/META-INF/com/android/build/gradle/**"
@@ -70,8 +68,6 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.gson)
 

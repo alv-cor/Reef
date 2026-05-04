@@ -36,4 +36,7 @@ sealed class Screen {
 
     @Serializable
     data class FocusSessionDetail(val sessionId: String): Screen()
+
+    @Serializable
+    data object WebsiteBlocklist: Screen()
 }

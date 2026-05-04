@@ -64,7 +64,8 @@ fun TimerContent(
     val showRunningView = isTimerRunning || isPaused
     var selectedMode by remember { mutableIntStateOf(0) }
 
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val scrollBehavior =
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -771,7 +772,10 @@ fun RunningTimerView(
             }
         }
 
-        if (!isStrictMode) {
+        val isBreak =
+            state.pomodoroPhase == PomodoroPhase.SHORT_BREAK || state.pomodoroPhase == PomodoroPhase.LONG_BREAK
+
+        if (!isStrictMode || (isPaused && isBreak)) {
             RunningTimerActions(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -781,7 +785,8 @@ fun RunningTimerView(
                 onPause = onPause,
                 onResume = onResume,
                 onCancel = onCancel,
-                onRestart = onRestart
+                onRestart = onRestart,
+                isStrictMode = isStrictMode
             )
         } else {
             Text(
@@ -802,6 +807,7 @@ fun RunningTimerView(
 fun RunningTimerActions(
     modifier: Modifier = Modifier,
     isPaused: Boolean,
+    isStrictMode: Boolean,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onCancel: () -> Unit,
@@ -837,31 +843,33 @@ fun RunningTimerActions(
             )
         }
 
-        Button(
-            onClick = { onCancel() },
-            modifier = Modifier
-                .weight(1f)
-                .padding(12.dp)
-                .height(84.dp),
-            shapes = ButtonDefaults.shapes(),
-        ) {
-            Text(
-                text = stringResource(R.string.cancel),
-                style = MaterialTheme.typography.titleLargeEmphasized
-            )
-        }
-
-        OutlinedButton(
-            onClick = onRestart,
-            shapes = ButtonDefaults.shapes(shape = ButtonDefaults.elevatedShape),
-            modifier = Modifier.size(60.dp)
-        ) {
-            Icon(
+        if (!isStrictMode) {
+            Button(
+                onClick = { onCancel() },
                 modifier = Modifier
-                    .fillMaxSize(),
-                imageVector = Icons.Filled.Replay,
-                contentDescription = stringResource(R.string.reset)
-            )
+                    .weight(1f)
+                    .padding(12.dp)
+                    .height(84.dp),
+                shapes = ButtonDefaults.shapes(),
+            ) {
+                Text(
+                    text = stringResource(R.string.cancel),
+                    style = MaterialTheme.typography.titleLargeEmphasized
+                )
+            }
+
+            OutlinedButton(
+                onClick = onRestart,
+                shapes = ButtonDefaults.shapes(shape = ButtonDefaults.elevatedShape),
+                modifier = Modifier.size(60.dp)
+            ) {
+                Icon(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    imageVector = Icons.Filled.Replay,
+                    contentDescription = stringResource(R.string.reset)
+                )
+            }
         }
     }
 }

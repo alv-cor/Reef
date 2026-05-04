@@ -115,7 +115,7 @@ object ScreenUsageHelper {
                 packageStartTimes[latestPackage!!.key]?.let { startTime ->
                     val duration = end - startTime
                     packageForegroundTimes[latestPackage.key] =
-                        packageForegroundTimes.getOrDefault(targetPackage, 0L) + duration
+                        packageForegroundTimes.getOrDefault(latestPackage.key, 0L) + duration
                 }
             }
 
