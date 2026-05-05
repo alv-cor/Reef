@@ -281,7 +281,7 @@
     <string name="block_entirely">Bloque completamente</string>
     <plurals name="apps_selected_count">
         <item quantity="one">%d aplicación seleccionada</item>
-        <item quantity="many"></item>
+        <item quantity="many"/>
         <item quantity="other">%d aplicaciones seleccionadas</item>
     </plurals>
     <string name="active_routines_list">Activo: %1$s</string>
@@ -289,7 +289,7 @@
     <string name="routine_active_single">%1$s activo</string>
     <plurals name="apps_count">
         <item quantity="one">%d app</item>
-        <item quantity="many"></item>
+        <item quantity="many"/>
         <item quantity="other">%d apps</item>
     </plurals>
     <string name="limit_per_session">Límite: %1$s por sesión</string>
@@ -306,7 +306,7 @@
     <string name="individual_limits_suffix">· límites individuales</string>
     <plurals name="groups_count">
         <item quantity="one">%d group</item>
-        <item quantity="many"></item>
+        <item quantity="many"/>
         <item quantity="other">%d groups</item>
     </plurals>
     <string name="agree">Acorde</string>
@@ -323,4 +323,34 @@
     <string name="app_usage_statistics_description">Utilizamos el permiso de las estadísticas de uso de aplicaciones para ayudar a controlar el tiempo de pantalla. Ningún dato deja tu dispositivo.</string>
     <string name="notification_permission">Permiso de notificación</string>
     <string name="weekly">Semanal</string>
+    <string name="decrease_by_one_minute">Disminuir el límite por un minuto</string>
+    <string name="increase_by_one_minute">Incremento límite por un minuto</string>
+    <string name="minus_15m">−15m</string>
+    <string name="minus_5m">5.00 m</string>
+    <string name="plus_5m">+5m</string>
+    <string name="plus_15m">+15m</string>
+    <string name="edit_group">Editar grupo</string>
+    <string name="website_blocked">Sitio web bloqueado</string>
+    <string name="website_blocked_by_routine">Sitio web bloqueado por rutina activa</string>
+    <string name="website_reached_limit">%1$s límite alcanzado</string>
+    <string name="add_website">Agregar sitio web</string>
+    <string name="edit_website">Editar sitio web</string>
+    <string name="domain_hint">Dominio (por ejemplo facebook.com)</string>
+    <string name="block_type">Tipo de bloque</string>
+    <string name="always_block">Siempre bloque</string>
+    <string name="daily_limit">Límite diario</string>
+    <string name="website_always_block_desc">Este sitio web estará permanentemente bloqueado.</string>
+    <string name="website_daily_limit_desc">Este sitio web será bloqueado después de alcanzar el límite de tiempo diario establecido.</string>
+    <string name="daily_time_limit">Límite del tiempo diario</string>
+    <string name="permanently_blocked">Bloqueados permanentemente</string>
+    <string name="daily_limits">Límites diarios</string>
+    <string name="always_blocked">Siempre bloqueado</string>
+    <string name="blocked_websites">Sitios web bloqueados</string>
+    <string name="blocked_websites_desc">Estos sitios web serán bloqueados durante sus sesiones de enfoque y rutinas activas.</string>
+    <string name="no_websites_added">No hay sitios web añadidos</string>
+    <string name="add_websites_desc">Agregar sitios web para bloquearlos o establecer límites de tiempo</string>
+    <string name="limit_format">Límite: %1$s</string>
+    <string name="save">Guardar</string>
+    <string name="website_blocklist">Página</string>
+    <string name="website_blocklist_desc">Gestionar sitios web bloqueados</string>
 </resources>
