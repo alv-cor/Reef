@@ -5,10 +5,10 @@
     <string name="accessibility_service">Service d\'Accessibilité</string>
     <string name="accessibility_service_description">Nous utilisons le service d\'accessibilité pour bloquer les applis qui sont source de distraction et vous aider à vous concentrer sur votre travail.</string>
     <string name="accessibility_service_app_limit">Nous utilisons le service d\'accessibilité pour forcer les limites de temps par appli.</string>
-    <string name="agree">D\'accord</string>
+    <string name="agree">Accepter</string>
     <string name="time_remaining">Temps restant : %1$s</string>
     <string name="focus_mode">Mode Focus</string>
-    <string name="app_usage">Utilisation de l\'appli</string>
+    <string name="app_usage">Utilisation des applis</string>
     <string name="usage_access">Accès aux données d\'utilisation</string>
     <string name="usage_access_description">Nous utilisons l\'accès aux données d\'utilisation pour suivre votre utilisation des applis ; aucune donnée n\'est partagée ou collectée.</string>
     <string name="app_usage_statistics">Statistiques d\'utilisation des applis</string>
@@ -16,7 +16,7 @@
     <string name="notification_permission">Permission de notification</string>
     <string name="notification_permission_description">Merci d\'activer les notifications pour continuer.</string>
     <string name="battery_optimization_exception">Ignorer les optimisations de batterie</string>
-    <string name="battery_optimization_exception_description">Merci d\'autoriser l\'Exception à l\'optimisation de batterie pour continuer.</string>
+    <string name="battery_optimization_exception_description">Merci d\'autoriser l\'exception des optimisations de batterie pour continuer.</string>
     <string name="exact_alarm_permission">Programmer des alarmes précises</string>
     <string name="exact_alarm_permission_description">Autorisez Reef à programmer des alarmes précises pour les routines. Cela garantit que vos routines de blocage d\'applications démarrent et s\'arrêtent exactement aux heures que vous avez définies.</string>
     <string name="whitelist_apps">Applis autorisées</string>
@@ -28,7 +28,7 @@
     <string name="routine_icon">Icône de la routine</string>
     <string name="active_status">Active</string>
     <string name="routine_name">Nom de la routine</string>
-    <string name="schedule">Programme</string>
+    <string name="schedule">Programmer</string>
     <string name="daily">Quotidien</string>
     <string name="weekly">Hebdomadaire</string>
     <string name="manual">Manuel</string>
@@ -42,7 +42,7 @@
     <string name="friday">Vendredi</string>
     <string name="saturday">Samedi</string>
     <string name="sunday">Dimanche</string>
-    <string name="app_limits">Limites de l\'appli</string>
+    <string name="app_limits">Limites des applis</string>
     <string name="add_app">Ajouter une appli</string>
     <string name="no_app_limits_desc">Aucune limites d\'appli ajoutées pour l\'instant\nAppuyez sur \"Ajouter une appli\" pour définir des limites pour des applis spécifiques</string>
     <string name="save_routine">Sauvegarder la routine</string>
@@ -61,7 +61,7 @@
     <string name="back">Retour</string>
     <string name="avg_daily">Moyenne quotidienne</string>
     <string name="block_entirely">Bloquer entièrement</string>
-    <string name="manage_focus">Gérer votre objectif</string>
+    <string name="manage_focus">Gérez votre concentration</string>
     <plurals name="whitelisted_apps">
         <item quantity="one">%1$s application autorisée</item>
         <item quantity="many">%1$s applications autorisées</item>
@@ -88,11 +88,11 @@
     <string name="pomodoro_subtitle">Configurer les sessions de concentration et les pauses</string>
     <string name="long_break">Longue pause</string>
     <string name="app_blocking_subtitle">Configurer les applications bloquées sur l\'écran principal</string>
-    <string name="app_blocking">App Blocking</string>
+    <string name="app_blocking">Blocage d\'applications</string>
     <string name="enable_dnd">Activer le mode \"Ne pas déranger\" en mode concentration</string>
     <string name="no_apps_match">Aucune application ne correspond à votre recherche</string>
     <string name="pomodoro_settings">Paramètres Pomodoro</string>
-    <string name="dnd_description">Notifications de silence pendant la focalisation</string>
+    <string name="dnd_description">Mettre les notifications en silencieux pendant la concentration</string>
     <string name="pomodoro_settings_title">Paramètres Pomodoro</string>
     <string name="hours_short_format">%1$dh</string>
     <string name="minutes_short_format">%1$dm</string>
@@ -127,11 +127,11 @@
         <item quantity="many">%d applis sélectionnées</item>
         <item quantity="other">%d applis sélectionnées</item>
     </plurals>
-    <string name="focus_duration">Durée</string>
+    <string name="focus_duration">Durée de concentration</string>
     <string name="automation">Automatisation</string>
     <string name="routine_activated_toast">Routine \'%1$s\' activée ! %2$s</string>
     <string name="timer_tab">Timer</string>
-    <string name="auto_start_breaks_description">Démarrez automatiquement la pause lorsque le focus se termine</string>
+    <string name="auto_start_breaks_description">Démarrer automatiquement la pause lorsque la la phase de concentration se termine</string>
     <string name="cycles_label">Cycles</string>
     <string name="start_pomodoro">Démarrer le pomodoro</string>
     <string name="short_break_label">Courte pause</string>
@@ -169,7 +169,7 @@
     <string name="decrease">Diminuer</string>
     <string name="no_pausing_allowed">Aucune pause autorisée</string>
     <string name="apps_tracked_multiple">%1$d applications suivies</string>
-    <string name="whitelist_apps_title">Apps blanches</string>
+    <string name="whitelist_apps_title">Applications autorisées</string>
     <string name="sort">Trier</string>
     <string name="percentage_format">%1$d%%</string>
     <string name="foss_label">Logiciel libre et open-source</string>
@@ -179,7 +179,7 @@
     <string name="select_sound">Sélectionner le son</string>
     <string name="sort_by_time">Trier par temps</string>
     <string name="pause">Pause</string>
-    <string name="focus_reminders">Rappels de concentration</string>
+    <string name="focus_reminders">Rappels de priorités</string>
     <string name="developer_label">Développeur</string>
     <string name="last_7_days_option">7 jours</string>
     <string name="notifications_subtitle">Configurer les alertes et les rappels</string>
@@ -220,7 +220,7 @@
     <string name="sound_description">Jouer un son lors des transitions de phase</string>
     <string name="ok">OK</string>
     <string name="choose_sound">Choisir un son</string>
-    <string name="daily_summary_description">Recevez un rapport quotidien sur votre temps d\'écran à 21h.</string>
+    <string name="daily_summary_description">Recevez un rapport quotidien sur votre temps d\'écran à 21h</string>
     <string name="blocker_channel_name">Content Blocker</string>
     <string name="distraction_blocked">Distraction bloquée</string>
     <string name="routine_activated">Activation de routine</string>
@@ -231,7 +231,7 @@
     <string name="routine_has_ended">%1$s a pris fin</string>
     <string name="routine_channel_name">Alertes de routine</string>
     <string name="vibration">Vibration</string>
-    <string name="choose_sound_description">Sélectionnez la sonnerie de notification</string>
+    <string name="choose_sound_description">Jouer un son entre les phases</string>
     <string name="search_apps">Rechercher dans les applis</string>
     <plurals name="app_will_be_blocked_in">
         <item quantity="one">%1$s sera bloqué dans %2$d minutes</item>
@@ -246,7 +246,7 @@
     <string name="blocker_channel_description">Affiche des rappels pour le temps d\'écran et quand les applications sont bloquées.</string>
     <string name="slide">Diapositive</string>
     <string name="break_ended_title">Arrêtez !</string>
-    <string name="transition_sound_description">Jouer un son entre les phases</string>
+    <string name="transition_sound_description">Play sound between phases</string>
     <string name="vibration_description">Vibrer lors des transitions de phase</string>
     <string name="general_section">Général</string>
     <string name="reminder_channel_description">Notifications vous rappelant l\'utilisation de l\'écran.</string>
@@ -262,7 +262,7 @@
     <string name="group_type">Type de groupe</string>
     <string name="auto_start_focus_description">Démarrer automatiquement le focus après la fin de la pause</string>
     <string name="break_alerts_description">Alerte quand il est temps de faire une pause</string>
-    <string name="donate_dialog_message">Le récif est entièrement gratuit sans publicité, suivi ou coûts cachés. Si vous le trouvez utile, s\'il vous plaît considérer un petit don pour aider à le garder de cette façon. Votre soutien signifie tout et garde ce projet en vie. Merci !</string>
+    <string name="donate_dialog_message">Reef est entièrement gratuit, sans publicité, sans suivi et sans frais cachés. Si vous l\'appréciez, un petit don nous permettrait de le garder ainsi. Votre soutien est essentiel et assure la pérennité de ce projet. Merci !</string>
     <string name="select_apps_label">Sélectionner des applications</string>
     <string name="version_label">Version %1$s</string>
     <string name="group_total_limit">Limite de temps totale</string>
@@ -278,9 +278,9 @@
     <string name="start_focus_session">Commencer une séance de discussion</string>
     <string name="select_sound_description">Choisissez un son de notification</string>
     <string name="set_limit_for">Définir une limite pour %1$s</string>
-    <string name="break_alerts">Alertes de rupture</string>
+    <string name="break_alerts">Alertes de pause</string>
     <string name="daily_summary_title">Temps d\'écran quotidien</string>
-    <string name="limit_warnings_description">Warn lorsque vous approchez des limites de temps de l\'application</string>
+    <string name="limit_warnings_description">Warn lorsque vous approchez de la limite de temps d\'une appli</string>
     <string name="edit_routine">Modifier la routine</string>
     <string name="delete_routine_confirmation">Êtes-vous sûr de vouloir supprimer \'%1$s\'? Cette action est irréversible.</string>
     <string name="reset">Réinitialiser</string>
@@ -310,7 +310,7 @@
         <item quantity="many">%d applis</item>
         <item quantity="other">%d applis</item>
     </plurals>
-    <string name="activate_routine_confirmation">Voulez-vous activer \'%1$s\' maintenant ?</string>
+    <string name="activate_routine_confirmation">Voulez-vous activer \'%1$s\' maintenant ?</string>
     <plurals name="app_limits_applied">
         <item quantity="one">%1$d limites de l\'appli</item>
         <item quantity="many">%1$d limites des applis</item>
@@ -326,7 +326,7 @@
     <string name="nav_settings">Réglages</string>
     <string name="cancel">Annuler</string>
     <string name="delete">Supprimer</string>
-    <string name="set_limits_label">Définir une limite</string>
+<string name="set_limits_label">Définir une limite</string>
     <string name="decrease_by_one_minute">Diminuer la limite d\'une minute</string>
     <string name="increase_by_one_minute">Augmenter la limite d\'une minute</string>
     <string name="minus_15m">−15m</string>
