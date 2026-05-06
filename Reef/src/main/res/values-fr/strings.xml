@@ -169,7 +169,7 @@
     <string name="decrease">Diminuer</string>
     <string name="no_pausing_allowed">Aucune pause autorisée</string>
     <string name="apps_tracked_multiple">%1$d applications suivies</string>
-    <string name="whitelist_apps_title">Applications autorisées</string>
+    <string name="whitelist_apps_title">Apps blanches</string>
     <string name="sort">Trier</string>
     <string name="percentage_format">%1$d%%</string>
     <string name="foss_label">Logiciel libre et open-source</string>
