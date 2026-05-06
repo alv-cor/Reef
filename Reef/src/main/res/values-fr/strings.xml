@@ -5,10 +5,10 @@
     <string name="accessibility_service">Service d\'Accessibilité</string>
     <string name="accessibility_service_description">Nous utilisons le service d\'accessibilité pour bloquer les applis qui sont source de distraction et vous aider à vous concentrer sur votre travail.</string>
     <string name="accessibility_service_app_limit">Nous utilisons le service d\'accessibilité pour forcer les limites de temps par appli.</string>
-    <string name="agree">Accepter</string>
+    <string name="agree">D\'accord</string>
     <string name="time_remaining">Temps restant : %1$s</string>
     <string name="focus_mode">Mode Focus</string>
-    <string name="app_usage">Utilisation des applis</string>
+    <string name="app_usage">Utilisation de l\'appli</string>
     <string name="usage_access">Accès aux données d\'utilisation</string>
     <string name="usage_access_description">Nous utilisons l\'accès aux données d\'utilisation pour suivre votre utilisation des applis ; aucune donnée n\'est partagée ou collectée.</string>
     <string name="app_usage_statistics">Statistiques d\'utilisation des applis</string>
@@ -16,7 +16,7 @@
     <string name="notification_permission">Permission de notification</string>
     <string name="notification_permission_description">Merci d\'activer les notifications pour continuer.</string>
     <string name="battery_optimization_exception">Ignorer les optimisations de batterie</string>
-    <string name="battery_optimization_exception_description">Merci d\'autoriser l\'exception des optimisations de batterie pour continuer.</string>
+    <string name="battery_optimization_exception_description">Merci d\'autoriser l\'Exception à l\'optimisation de batterie pour continuer.</string>
     <string name="exact_alarm_permission">Programmer des alarmes précises</string>
     <string name="exact_alarm_permission_description">Autorisez Reef à programmer des alarmes précises pour les routines. Cela garantit que vos routines de blocage d\'applications démarrent et s\'arrêtent exactement aux heures que vous avez définies.</string>
     <string name="whitelist_apps">Applis autorisées</string>
@@ -28,7 +28,7 @@
     <string name="routine_icon">Icône de la routine</string>
     <string name="active_status">Active</string>
     <string name="routine_name">Nom de la routine</string>
-    <string name="schedule">Programmer</string>
+    <string name="schedule">Programme</string>
     <string name="daily">Quotidien</string>
     <string name="weekly">Hebdomadaire</string>
     <string name="manual">Manuel</string>
@@ -42,7 +42,7 @@
     <string name="friday">Vendredi</string>
     <string name="saturday">Samedi</string>
     <string name="sunday">Dimanche</string>
-    <string name="app_limits">Limites des applis</string>
+    <string name="app_limits">Limites de l\'appli</string>
     <string name="add_app">Ajouter une appli</string>
     <string name="no_app_limits_desc">Aucune limites d\'appli ajoutées pour l\'instant\nAppuyez sur \"Ajouter une appli\" pour définir des limites pour des applis spécifiques</string>
     <string name="save_routine">Sauvegarder la routine</string>
@@ -220,7 +220,7 @@
     <string name="sound_description">Jouer un son lors des transitions de phase</string>
     <string name="ok">OK</string>
     <string name="choose_sound">Choisir un son</string>
-    <string name="daily_summary_description">Recevez un rapport quotidien sur votre temps d\'écran à 21h</string>
+    <string name="daily_summary_description">Recevez un rapport quotidien sur votre temps d\'écran à 21h.</string>
     <string name="blocker_channel_name">Content Blocker</string>
     <string name="distraction_blocked">Distraction bloquée</string>
     <string name="routine_activated">Activation de routine</string>
@@ -262,7 +262,7 @@
     <string name="group_type">Type de groupe</string>
     <string name="auto_start_focus_description">Démarrer automatiquement le focus après la fin de la pause</string>
     <string name="break_alerts_description">Alerte quand il est temps de faire une pause</string>
-    <string name="donate_dialog_message">Reef est entièrement gratuit, sans publicité, sans suivi et sans frais cachés. Si vous l\'appréciez, un petit don nous permettrait de le garder ainsi. Votre soutien est essentiel et assure la pérennité de ce projet. Merci !</string>
+    <string name="donate_dialog_message">Le récif est entièrement gratuit sans publicité, suivi ou coûts cachés. Si vous le trouvez utile, s\'il vous plaît considérer un petit don pour aider à le garder de cette façon. Votre soutien signifie tout et garde ce projet en vie. Merci !</string>
     <string name="select_apps_label">Sélectionner des applications</string>
     <string name="version_label">Version %1$s</string>
     <string name="group_total_limit">Limite de temps totale</string>
