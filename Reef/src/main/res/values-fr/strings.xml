@@ -206,7 +206,7 @@
     <string name="you_were_using">Vous utilisiez %1$s</string>
     <string name="grant">Subvention</string>
     <string name="required_permissions">Permissions requises</string>
-    <string name="accessibility_error_toast">Vous ne pouvez pas Récif sans service d\'accessibilité</string>
+    <string name="accessibility_error_toast">Vous ne pouvez pas utiliser Reef sans activer le service d\'accessibilité</string>
     <string name="release">Release</string>
     <string name="no_usage_data">Aucune donnée d \' utilisation disponible</string>
     <string name="daily_summary_message">Vous avez passé %1$s sur votre téléphone aujourd\'hui</string>
