@@ -174,7 +174,7 @@
     <string name="percentage_format">%1$d%%</string>
     <string name="foss_label">Logiciel libre et Open Source</string>
     <string name="usage_history">Historique d \' utilisation</string>
-    <string name="paused_status">En pause</string>
+    <string name="paused_status">Paused</string>
     <string name="resume">Consommation</string>
     <string name="select_sound">Sélectionner le son</string>
     <string name="sort_by_time">Trier par temps</string>
@@ -278,9 +278,9 @@
     <string name="start_focus_session">Commencer une séance de discussion</string>
     <string name="select_sound_description">Choisissez un son de notification</string>
     <string name="set_limit_for">Définir une limite pour %1$s</string>
-    <string name="break_alerts">Alertes de pause</string>
+    <string name="break_alerts">Alertes de rupture</string>
     <string name="daily_summary_title">Temps d\'écran quotidien</string>
-    <string name="limit_warnings_description">Warn lorsque vous approchez de la limite de temps d\'une appli</string>
+    <string name="limit_warnings_description">Warn lorsque vous approchez des limites de temps de l\'application</string>
     <string name="edit_routine">Modifier la routine</string>
     <string name="delete_routine_confirmation">Êtes-vous sûr de vouloir supprimer \'%1$s\'? Cette action est irréversible.</string>
     <string name="reset">Réinitialiser</string>
