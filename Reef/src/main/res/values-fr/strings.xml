@@ -44,14 +44,14 @@
     <string name="sunday">Dimanche</string>
     <string name="app_limits">Limites des applis</string>
     <string name="add_app">Ajouter une appli</string>
-    <string name="no_app_limits_desc">Aucune limite d\'appli ajoutée pour l\'instant\nAppuyez sur \"Ajouter une appli\" pour définir des limites pour des applis spécifiques</string>
+    <string name="no_app_limits_desc">Aucune limites d\'appli ajoutées pour l\'instant\nAppuyez sur \"Ajouter une appli\" pour définir des limites pour des applis spécifiques</string>
     <string name="save_routine">Sauvegarder la routine</string>
     <string name="delete_routine">Supprimer la routine</string>
     <string name="routines">Routines</string>
     <string name="routine_card_title">Automatisez votre bien-être numérique</string>
-    <string name="routine_card_desc">Créez des routines pour automatiquement gérer les limites d\'applis pour des jours et des horaires spécifiques</string>
-    <string name="no_routines_yet">Aucune routine pour l\'instant</string>
-    <string name="create_routine_text">Créez votre première routine pour automatiser les limites d\'applis basées sur votre programme</string>
+    <string name="routine_card_desc">Créez des routines intelligentes pour automatiquement gérer les limites d\'applis à des heures et des jours précis</string>
+    <string name="no_routines_yet">Aucune routines pour l\'instant</string>
+    <string name="create_routine_text">Créez votre première routine pour automatiser les limites d\'applis en fonction de votre emploi du temps</string>
     <string name="create_routine">Créer une routine</string>
     <string name="focus_session_complete">Session Focus terminée</string>
     <string name="focus_session_complete_message">Bien joué ! Vous avez terminé votre session focus.</string>
@@ -60,8 +60,8 @@
     <string name="next">Suivant</string>
     <string name="back">Retour</string>
     <string name="avg_daily">Moyenne quotidienne</string>
-    <string name="block_entirely">Bloque entièrement</string>
-    <string name="manage_focus">Gérer votre objectif</string>
+    <string name="block_entirely">Bloquer entièrement</string>
+    <string name="manage_focus">Gérez votre concentration</string>
     <plurals name="whitelisted_apps">
         <item quantity="one">%1$s application autorisée</item>
         <item quantity="many">%1$s applications autorisées</item>
@@ -70,7 +70,7 @@
     <string name="about">À propos</string>
     <string name="app_usage_desc">Suivez votre temps d\'écran</string>
     <string name="whitelist_apps_desc">Sélectionnez les applications à exclure du mode focus</string>
-    <string name="limit_per_session">Limite: %1$s par session</string>
+    <string name="limit_per_session">Limite : %1$s par session</string>
     <string name="do_not_disturb_permission">Permission d\'accéder au mode \"Ne pas déranger\"</string>
     <string name="support_development">Appui au développement</string>
     <string name="app_will_be_fully_blocked">L\'application sera complètement bloquée pendant la routine</string>
@@ -318,7 +318,7 @@
     </plurals>
     <string name="schedule_from_to">" de %1$s à %2$s"</string>
     <string name="weekdays">Jours de semaine</string>
-    <string name="get_started">Commencez</string>
+    <string name="get_started">Commencer</string>
     <string name="settings">Réglages</string>
     <string name="weekly_overview">Hebdomadaire</string>
     <string name="edit">Edit</string>
