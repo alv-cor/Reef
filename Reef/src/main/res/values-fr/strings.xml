@@ -220,7 +220,7 @@
     <string name="sound_description">Jouer un son lors des transitions de phase</string>
     <string name="ok">OK</string>
     <string name="choose_sound">Choisir un son</string>
-    <string name="daily_summary_description">Recevoir chaque jour les rapports de temps d\'écran à 21h</string>
+    <string name="daily_summary_description">Recevez un rapport quotidien sur votre temps d\'écran à 21h</string>
     <string name="blocker_channel_name">Content Blocker</string>
     <string name="distraction_blocked">Distraction bloquée</string>
     <string name="routine_activated">Activation de routine</string>
