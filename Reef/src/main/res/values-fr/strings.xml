@@ -85,10 +85,10 @@
     <string name="support_development_desc">Si vous aimez utiliser Reef, envisagez de soutenir son développement. Vos contributions nous aident à garder l\'application libre et open source.</string>
     <string name="any_amount_helps">Votre soutien, quel qu\'en soit le montant, contribue à maintenir ce projet en vie et à l\'améliorer.</string>
     <string name="join_community">Rejoignez la communauté</string>
-    <string name="pomodoro_subtitle">Configurer les séances et les pauses</string>
+    <string name="pomodoro_subtitle">Configurer les sessions de concentration et les pauses</string>
     <string name="long_break">Longue pause</string>
     <string name="app_blocking_subtitle">Configurer les applications bloquées dans l\'écran principal</string>
-    <string name="app_blocking">App Blocking</string>
+    <string name="app_blocking">Blocage d\'applications</string>
     <string name="enable_dnd">Activer le mode \"Ne pas déranger\" en mode concentration</string>
     <string name="no_apps_match">Aucune application ne correspond à votre recherche</string>
     <string name="pomodoro_settings">Pomodoro Réglages</string>
