@@ -57,24 +57,34 @@ class App: Application(), Configuration.Provider {
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
 
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            Log.e("ReefApp", "CRITICAL CRASH: ${throwable.message}")
-            throwable.printStackTrace()
-
-            val intent = Intent(this, BlockerService::class.java)
-            val pendingIntent = PendingIntent.getService(
-                this,
-                111,
-                intent,
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            )
+            val stackTrace = Log.getStackTraceString(throwable)
+            Log.e("ReefApp", "CRITICAL CRASH: $stackTrace")
 
             val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
+            val currentTime = System.currentTimeMillis()
 
-            alarmManager.set(
-                AlarmManager.RTC_WAKEUP,
-                System.currentTimeMillis() + 1500,
-                pendingIntent
+            // Alarm to restart BlockerService
+            val serviceIntent = Intent(this, BlockerService::class.java)
+            val servicePendingIntent = PendingIntent.getService(
+                this,
+                111,
+                serviceIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
+            alarmManager.set(AlarmManager.RTC_WAKEUP, currentTime + 1000, servicePendingIntent)
+
+            // Alarm to show DebugActivity with error message
+            val debugIntent = Intent(this, DebugActivity::class.java).apply {
+                putExtra("error", stackTrace)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            }
+            val debugPendingIntent = PendingIntent.getActivity(
+                this,
+                112,
+                debugIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            alarmManager.set(AlarmManager.RTC_WAKEUP, currentTime + 1500, debugPendingIntent)
 
             defaultHandler?.uncaughtException(thread, throwable)
         }

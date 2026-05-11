@@ -321,4 +321,34 @@
         <item quantity="many">%1$s будет заблокирован в %2$d минутах</item>
         <item quantity="other">%1$s будет заблокирован в %2$d минутах</item>
     </plurals>
+    <string name="decrease_by_one_minute">Сокращение лимита на одну минуту</string>
+    <string name="increase_by_one_minute">Увеличить лимит на одну минуту</string>
+    <string name="minus_15m">−15m</string>
+    <string name="minus_5m">−5м</string>
+    <string name="plus_5m">+5м</string>
+    <string name="plus_15m">+15m</string>
+    <string name="edit_group">Изменить группу</string>
+    <string name="website_blocked">Сайт заблокирован</string>
+    <string name="website_blocked_by_routine">Веб-сайт заблокирован активной рутиной</string>
+    <string name="website_reached_limit">%1$s limit reached</string>
+    <string name="add_website">Добавить сайт</string>
+    <string name="edit_website">Изменить сайт</string>
+    <string name="domain_hint">Домен (например facebook.com)</string>
+    <string name="block_type">Тип блока</string>
+    <string name="always_block">Всегда</string>
+    <string name="daily_limit">Ежедневный лимит</string>
+    <string name="website_always_block_desc">Этот сайт будет постоянно заблокирован.</string>
+    <string name="website_daily_limit_desc">Этот сайт будет заблокирован после достижения установленного ежедневного лимита времени.</string>
+    <string name="daily_time_limit">Ежедневный лимит времени</string>
+    <string name="permanently_blocked">Постоянно блокируется</string>
+    <string name="daily_limits">Ежедневные лимиты</string>
+    <string name="always_blocked">Всегда заблокирован</string>
+    <string name="blocked_websites">Заблокированные сайты</string>
+    <string name="blocked_websites_desc">Эти веб-сайты будут заблокированы во время ваших целевых сессий и активных процедур.</string>
+    <string name="no_websites_added">Нет сайтов</string>
+    <string name="add_websites_desc">Добавить веб-сайты для их блокировки или установления временных ограничений</string>
+    <string name="limit_format">Ограничение: %1$s</string>
+    <string name="save">Сохранить</string>
+    <string name="website_blocklist">Сайт Blocklist</string>
+    <string name="website_blocklist_desc">Управление заблокированными веб-сайтами</string>
 </resources>

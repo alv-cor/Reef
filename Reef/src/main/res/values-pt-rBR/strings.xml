@@ -45,7 +45,7 @@
     <string name="whitelist_apps_desc">Selecione aplicativos para excluir do modo de foco</string>
     <plurals name="whitelisted_apps">
         <item quantity="one">%1$s aplicativos permitidos</item>
-        <item quantity="many"></item>
+        <item quantity="many"/>
         <item quantity="other">%1$s aplicativos permitidos</item>
     </plurals>
     <string name="avg_daily">Avg. Diário</string>
@@ -153,12 +153,12 @@
     <string name="set_limit_for">Limite de ajuste para %1$s</string>
     <plurals name="minutes_label">
         <item quantity="one">%d</item>
-        <item quantity="many"></item>
+        <item quantity="many"/>
         <item quantity="other">%d</item>
     </plurals>
     <plurals name="hours_label">
         <item quantity="one">%1$d horas</item>
-        <item quantity="many"></item>
+        <item quantity="many"/>
         <item quantity="other">%1$d horas</item>
     </plurals>
     <string name="enter_routine_name_error">Digite um nome de rotina</string>
@@ -181,17 +181,17 @@
     <string name="individual_limits_suffix">· limites individuais</string>
     <plurals name="apps_selected_count">
         <item quantity="one">%d Aplicativos selecionados</item>
-        <item quantity="many"></item>
+        <item quantity="many"/>
         <item quantity="other">%d Aplicativos selecionados</item>
     </plurals>
     <plurals name="groups_count">
         <item quantity="one">%d grupos</item>
-        <item quantity="many"></item>
+        <item quantity="many"/>
         <item quantity="other">%d grupos</item>
     </plurals>
     <plurals name="apps_count">
         <item quantity="one">%d Aplicações</item>
-        <item quantity="many"></item>
+        <item quantity="many"/>
         <item quantity="other">%d Aplicações</item>
     </plurals>
     <string name="activate_routine">Ativar a rotina</string>
@@ -199,7 +199,7 @@
     <string name="no_app_limits_applied">Não foram aplicados limites de aplicação</string>
     <plurals name="app_limits_applied">
         <item quantity="one">%1$d limites do aplicativo</item>
-        <item quantity="many"></item>
+        <item quantity="many"/>
         <item quantity="other">%1$d limites do aplicativo</item>
     </plurals>
     <string name="routine_activated_toast">Rotina \'%1$s\' ativado! %2$s</string>
@@ -304,7 +304,7 @@
     <string name="time_limit_reminder">Remessa de limite de tempo</string>
     <plurals name="app_will_be_blocked_in">
         <item quantity="one">%1$s será bloqueado em minutos %2$d</item>
-        <item quantity="many"></item>
+        <item quantity="many"/>
         <item quantity="other">%1$s será bloqueado em minutos %2$d</item>
     </plurals>
     <string name="routine_channel_name">Alertas de rotina</string>
@@ -327,4 +327,34 @@
     <string name="nav_stats">Estatísticas</string>
     <string name="nav_focus">Foco</string>
     <string name="nav_settings">Configurações</string>
+    <string name="decrease_by_one_minute">Diminuir limite por um minuto</string>
+    <string name="increase_by_one_minute">Aumente o limite por um minuto</string>
+    <string name="minus_15m">-15m</string>
+    <string name="minus_5m">-5m</string>
+    <string name="plus_5m">+ 5m</string>
+    <string name="plus_15m">+ 15m</string>
+    <string name="edit_group">Editar grupo</string>
+    <string name="website_blocked">Site bloqueado</string>
+    <string name="website_blocked_by_routine">Site bloqueado por rotina ativa</string>
+    <string name="website_reached_limit">%1$s limite atingido</string>
+    <string name="add_website">Adicionar site</string>
+    <string name="edit_website">Editar Site</string>
+    <string name="domain_hint">Domínio (por exemplo, facebook.com)</string>
+    <string name="block_type">Tipo de bloco</string>
+    <string name="always_block">Bloquear sempre</string>
+    <string name="daily_limit">Limite diário</string>
+    <string name="website_always_block_desc">Este site será permanentemente bloqueado.</string>
+    <string name="website_daily_limit_desc">Este site será bloqueado após atingir o limite de tempo diário definido.</string>
+    <string name="daily_time_limit">Limite de tempo diário</string>
+    <string name="permanently_blocked">Bloqueado permanentemente</string>
+    <string name="daily_limits">Limites diários</string>
+    <string name="always_blocked">Sempre bloqueado</string>
+    <string name="blocked_websites">Sites bloqueados</string>
+    <string name="blocked_websites_desc">Esses sites serão bloqueados durante suas sessões de foco e rotinas ativas.</string>
+    <string name="no_websites_added">Nenhum site adicionado</string>
+    <string name="add_websites_desc">Adicionar sites para bloqueá-los ou definir limites de tempo</string>
+    <string name="limit_format">Limite: %1$s</string>
+    <string name="save">Salvar</string>
+    <string name="website_blocklist">Site Blocklist</string>
+    <string name="website_blocklist_desc">Gerenciar sites bloqueados</string>
 </resources>

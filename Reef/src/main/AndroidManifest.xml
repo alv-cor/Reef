@@ -120,5 +120,13 @@
                 android:value="androidx.startup"
                 tools:node="remove" />
         </provider>
+
+        <activity
+            android:name=".DebugActivity"
+            android:exported="false"
+            android:process=":error_recovery"
+            android:theme="@style/Theme.Reef"
+            android:windowSoftInputMode="adjustResize" />
     </application>
+
 </manifest>
