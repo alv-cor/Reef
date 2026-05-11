@@ -271,8 +271,10 @@
     <string name="distraction_blocked">Distracción bloqueada</string>
     <string name="you_were_using">Estabas usando %1$s</string>
 
+    <string name="save">Guardar</string>
     <string name="blocker_channel_name">Bloqueador de contenido</string>
     <string name="blocker_channel_description">Muestra recordatorios de tiempo y apps bloqueadas.</string>
+    <string name="website_blocklist_desc">Gestionar bloqueo de sitios web</string>
     <string name="no_usage_data">Sin datos de uso</string>
     <string name="routine_activated">Rutina activada</string>
     <string name="routine_deactivated">Rutina desactivada</string>
@@ -332,6 +334,7 @@
     <string name="app_groups">Grupos de aplicaciones</string>
     <string name="no_app_groups_desc">No se han añadido grupos todavía. Selecciona \'Añadir grupo\' para crear un grupo con límites individuales o compartidos.</string>
     <string name="remove_group">Eliminar grupo</string>
+    <string name="edit_group">Editar grupo</string>
     <string name="shared_type_label">Compartido</string>
     <string name="individual_type_label">Individual</string>
     <string name="shared_limit_suffix">" · %1$s compartido"</string>
@@ -340,4 +343,27 @@
 
     <string name="whitelist_apps_desc">Selecciona las aplicaciones que quieres permitir durante las sesiones de concentración</string>
     <string name="individual_limits_suffix"> · límites individuales</string>
+    <string name="decrease_by_one_minute">Decrementar límite en un minuto</string>
+    <string name="increase_by_one_minute">Incrementar límite en un minuto</string>
+    <string name="website_blocked">Sitio web bloqueado</string>
+    <string name="website_blocked_by_routine">Sitio web bloqueado por la rutina activa</string>
+    <string name="website_reached_limit">"Límite alcanzado para%1$s "</string>
+    <string name="add_website">Añadir sitio web</string>
+    <string name="edit_website">Editar sitio web</string>
+    <string name="domain_hint">Dominio (ej. facebook.com)</string>
+    <string name="block_type">Tipo de bloqueo</string>
+    <string name="always_block">Bloquear siempre</string>
+    <string name="daily_limit">Límite diario</string>
+    <string name="website_always_block_desc">Este sitio será bloqueado siempre.</string>
+    <string name="website_daily_limit_desc">Este sitio será bloqueado tras alcanzar el límite diario establecido</string>
+    <string name="daily_time_limit">Límite de tiempo diario</string>
+    <string name="permanently_blocked">Bloqueado siempre</string>
+    <string name="daily_limits">Límites diarios</string>
+    <string name="always_blocked">Bloqueado siempre</string>
+    <string name="blocked_websites">Sitios web bloqueados</string>
+    <string name="blocked_websites_desc">Este sitio web será bloqueado durante las sesiones de concentración y las rutinas activas</string>
+    <string name="no_websites_added">No se han añadido sitios web</string>
+    <string name="add_websites_desc">Añadir sitios web para bloquearlos o establecer límites de uso</string>
+    <string name="limit_format">Límite: %1$s</string>
+    <string name="website_blocklist">Lista de sitios web bloqueados</string>
 </resources>

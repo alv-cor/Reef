@@ -160,10 +160,10 @@
     <string name="set_limit_for">Set limit for %1$s</string>
     <string name="decrease_by_one_minute">Decrease limit by one minute</string>
     <string name="increase_by_one_minute">Increase limit by one minute</string>
-    <string name="minus_15m">−15m</string>
-    <string name="minus_5m">−5m</string>
-    <string name="plus_5m">+5m</string>
-    <string name="plus_15m">+15m</string>
+    <string name="minus_15m" translatable="false">−15m</string>
+    <string name="minus_5m" translatable="false">−5m</string>
+    <string name="plus_5m" translatable="false">+5m</string>
+    <string name="plus_15m" translatable="false">+15m</string>
 
     <plurals name="minutes_label">
         <item quantity="one">%d minute</item>
