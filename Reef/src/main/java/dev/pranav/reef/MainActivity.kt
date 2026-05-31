@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.content.pm.LauncherApps
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -299,7 +300,21 @@ class MainActivity: ComponentActivity() {
                                 onNavigateToTimer = { navController.navigate(Screen.Timer) },
                                 onNavigateToUsage = { navController.navigate(Screen.Usage) },
                                 onNavigateToRoutines = { navController.navigate(Screen.Routines) },
-                                onNavigateToWhitelist = { navController.navigate(Screen.Whitelist) },
+                                onNavigateToWhitelist = {
+                                    if (prefs.getBoolean(
+                                            "focus_mode",
+                                            false
+                                        ) && TimerStateManager.state.value.isStrictMode
+                                    ) {
+                                        Toast.makeText(
+                                            baseContext,
+                                            "Wait for focus mode to end",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    } else {
+                                        navController.navigate(Screen.Whitelist)
+                                    }
+                                },
                                 onNavigateToWebsiteBlocklist = { navController.navigate(Screen.WebsiteBlocklist) },
                                 onNavigateToIntro = {
                                     startActivity(
