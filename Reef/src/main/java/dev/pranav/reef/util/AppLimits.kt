@@ -183,7 +183,7 @@ object Whitelist {
         "net.osmand",
         "com.fsck.k9",
         "bin.mt.plus.canary",
-        "com.sadellie.calculator",
+        "com.sadellie.unitto",
         "com.lineageos.aperture.dev",
         "com.lineageos.aperture",
         "com.shazam.android",
