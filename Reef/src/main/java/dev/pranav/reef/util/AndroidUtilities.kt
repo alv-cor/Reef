@@ -29,4 +29,11 @@ object AndroidUtilities {
         context.theme.resolveAttribute(attr, typedValue, true)
         return typedValue.data
     }
+
+    fun formatTime(millis: Long): String {
+        val totalSeconds = millis / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+        return String.format(java.util.Locale.getDefault(), "%02d:%02d", minutes, seconds)
+    }
 }

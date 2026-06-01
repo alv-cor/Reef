@@ -28,7 +28,8 @@ import dev.pranav.reef.timer.PomodoroPhase
 import dev.pranav.reef.timer.TimerSessionState
 import dev.pranav.reef.timer.TimerStateManager
 import dev.pranav.reef.util.*
-import java.util.Locale
+import dev.pranav.reef.util.AndroidUtilities.formatTime
+import kotlinx.coroutines.*
 import java.util.concurrent.TimeUnit
 
 @SuppressLint("MissingPermission")
@@ -43,6 +44,7 @@ class FocusModeService: Service() {
         const val ACTION_PAUSE = "dev.pranav.reef.PAUSE_TIMER"
         const val ACTION_RESUME = "dev.pranav.reef.RESUME_TIMER"
         const val ACTION_RESTART = "dev.pranav.reef.RESTART_TIMER"
+        const val ACTION_TAKE_BREAK = "dev.pranav.reef.TAKE_BREAK"
         const val EXTRA_TIME_LEFT = "extra_time_left"
         const val EXTRA_TIMER_STATE = "extra_timer_state"
     }
@@ -54,6 +56,8 @@ class FocusModeService: Service() {
     private var previousInterruptionFilter: Int? = null
     private var initialDuration: Long = 0
     private var notificationStyle: NotificationCompat.ProgressStyle? = null
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var countUpJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -67,12 +71,17 @@ class FocusModeService: Service() {
 
     private fun promoteToForeground() {
         val state = TimerStateManager.state.value
-        val timeToDisplay = if (state.timeRemaining > 0) state.timeRemaining else
-            prefs.getLong("focus_time", TimeUnit.MINUTES.toMillis(10))
+        val timeToDisplay = when {
+            state.isCountUpMode && state.pomodoroPhase != PomodoroPhase.COUNT_UP_BREAK ->
+                state.focusTimeElapsed
+
+            state.timeRemaining > 0 -> state.timeRemaining
+            else -> prefs.getLong("focus_time", TimeUnit.MINUTES.toMillis(10))
+        }
 
         val notification = createNotification(
             title = getNotificationTitle(),
-            text = getString(R.string.time_remaining, formatTime(timeToDisplay)),
+            text = buildNotificationText(state, timeToDisplay),
             showPauseButton = !state.isStrictMode && state.isRunning,
             timeLeft = timeToDisplay
         )
@@ -90,13 +99,16 @@ class FocusModeService: Service() {
         }
 
         if (intent.action != ACTION_PAUSE) {
-            promoteToForeground()
+            if (intent.action != ACTION_START) {
+                promoteToForeground()
+            }
         }
 
         when (intent.action) {
             ACTION_PAUSE -> pauseTimer()
             ACTION_RESUME -> resumeTimer()
             ACTION_RESTART -> restartCurrentPhase()
+            ACTION_TAKE_BREAK -> startBreakPhase()
             ACTION_START -> startTimer()
         }
 
@@ -107,11 +119,28 @@ class FocusModeService: Service() {
         val focusTimeMillis = prefs.getLong("focus_time", TimeUnit.MINUTES.toMillis(10))
         val isStrictMode = prefs.getBoolean("strict_mode", false)
         val isPomodoroMode = prefs.getBoolean("pomodoro_mode", false)
+        val isCountUpMode = prefs.getBoolean("count_up_mode", false)
 
         initialDuration = focusTimeMillis
         notificationStyle = null
 
-        if (isPomodoroMode) {
+        if (isCountUpMode) {
+            val ratio = prefs.getFloat("count_up_ratio", 5f)
+            TimerStateManager.updateState {
+                copy(
+                    isRunning = true,
+                    isPaused = false,
+                    isPomodoroMode = false,
+                    isCountUpMode = true,
+                    isStrictMode = isStrictMode,
+                    countUpRatio = ratio,
+                    focusTimeElapsed = 0,
+                    breakBudget = 0,
+                    pomodoroPhase = PomodoroPhase.FOCUS
+                )
+            }
+            startCountUp()
+        } else if (isPomodoroMode) {
             val config = PomodoroConfig(
                 focusDuration = prefs.getLong("pomodoro_focus_duration", 25 * 60 * 1000L),
                 shortBreakDuration = prefs.getLong("pomodoro_short_break_duration", 5 * 60 * 1000L),
@@ -152,13 +181,17 @@ class FocusModeService: Service() {
 
         enableDNDIfNeeded()
 
+        promoteToForeground()
+
         updateNotification(
             title = getNotificationTitle(),
-            text = getString(R.string.time_remaining, formatTime(focusTimeMillis)),
+            text = buildNotificationText(TimerStateManager.state.value, focusTimeMillis),
             showPauseButton = !isStrictMode,
             timeLeft = focusTimeMillis
         )
-        startCountdown(focusTimeMillis)
+        if (!isCountUpMode) {
+            startCountdown(focusTimeMillis)
+        }
     }
 
     private fun getNotificationTitle(): String {
@@ -175,6 +208,110 @@ class FocusModeService: Service() {
     }
 
     override fun onBind(intent: Intent): IBinder? = null
+
+    private fun startCountUp() {
+        countUpJob?.cancel()
+        countUpJob = serviceScope.launch {
+            while (isActive) {
+                delay(1000)
+                val state = TimerStateManager.state.value
+                if (!state.isPaused) {
+                    val newElapsed = state.focusTimeElapsed + 1000
+                    val newBreakBudget = if (state.pomodoroPhase == PomodoroPhase.FOCUS) {
+                        (newElapsed / state.countUpRatio).toLong()
+                    } else {
+                        (state.breakBudget - 1000).coerceAtLeast(0)
+                    }
+
+                    if (state.pomodoroPhase == PomodoroPhase.COUNT_UP_BREAK && newBreakBudget == 0L) {
+                        handleTimerComplete()
+                        break
+                    }
+
+                    TimerStateManager.updateState {
+                        copy(
+                            focusTimeElapsed = newElapsed,
+                            breakBudget = newBreakBudget,
+                            timeRemaining = if (pomodoroPhase == PomodoroPhase.COUNT_UP_BREAK) newBreakBudget else 0
+                        )
+                    }
+
+                    val displayTime = if (state.pomodoroPhase == PomodoroPhase.COUNT_UP_BREAK) {
+                        newBreakBudget
+                    } else {
+                        newElapsed
+                    }
+                    updateNotificationAndBroadcast(displayTime)
+                }
+            }
+        }
+    }
+
+    private fun startBreakPhase() {
+        countUpJob?.cancel()
+        val state = TimerStateManager.state.value
+        val breakMillis = state.breakBudget
+
+        if (breakMillis <= 0) {
+            resumeCountUpAfterBreak()
+            return
+        }
+
+        TimerStateManager.updateState {
+            copy(
+                pomodoroPhase = PomodoroPhase.COUNT_UP_BREAK,
+                timeRemaining = breakMillis,
+                breakBudget = 0,
+                isRunning = true,
+                isPaused = false
+            )
+        }
+
+        FocusStats.endPhase(isCompleted = true)
+        FocusStats.startPhase(PhaseType.SHORT_BREAK, breakMillis)
+
+        restoreDND()
+        prefs.edit { putBoolean("focus_mode", false) }
+
+        initialDuration = breakMillis
+        notificationStyle = null
+
+        updateNotification(
+            title = getString(R.string.short_break_label),
+            text = getString(R.string.time_remaining, formatTime(breakMillis)),
+            showPauseButton = !state.isStrictMode,
+            timeLeft = breakMillis
+        )
+        broadcastTimerUpdate(formatTime(breakMillis))
+        startCountdown(breakMillis)
+    }
+
+    private fun resumeCountUpAfterBreak() {
+        countDownTimer?.cancel()
+
+        TimerStateManager.updateState {
+            copy(
+                pomodoroPhase = PomodoroPhase.FOCUS,
+                focusTimeElapsed = 0,
+                timeRemaining = 0,
+                breakBudget = 0,
+                isRunning = true,
+                isPaused = false
+            )
+        }
+
+        prefs.edit { putBoolean("focus_mode", true) }
+        enableDNDIfNeeded()
+
+        updateNotification(
+            title = getNotificationTitle(),
+            text = buildNotificationText(TimerStateManager.state.value, 0),
+            showPauseButton = !TimerStateManager.state.value.isStrictMode,
+            timeLeft = 0
+        )
+        broadcastTimerUpdate(formatTime(0))
+        startCountUp()
+    }
 
     private fun startCountdown(timeMillis: Long) {
         countDownTimer?.cancel()
@@ -197,6 +334,7 @@ class FocusModeService: Service() {
         if (state.isStrictMode) return
 
         countDownTimer?.cancel()
+        countUpJob?.cancel()
 
         TimerStateManager.updateState {
             copy(isRunning = false, isPaused = true)
@@ -206,13 +344,20 @@ class FocusModeService: Service() {
 
         restoreDND()
 
+        val timeToDisplay =
+            if (state.isCountUpMode && state.pomodoroPhase != PomodoroPhase.COUNT_UP_BREAK) {
+                state.focusTimeElapsed
+            } else {
+                state.timeRemaining
+            }
+
         updateNotification(
             title = getNotificationTitle(),
-            text = formatTime(state.timeRemaining),
+            text = formatTime(timeToDisplay),
             showPauseButton = false,
-            timeLeft = state.timeRemaining
+            timeLeft = timeToDisplay
         )
-        broadcastTimerUpdate(formatTime(state.timeRemaining))
+        broadcastTimerUpdate(formatTime(timeToDisplay))
     }
 
     private fun resumeTimer() {
@@ -222,26 +367,48 @@ class FocusModeService: Service() {
             copy(isRunning = true, isPaused = false)
         }
 
-        val isFocusPhase = state.isPomodoroMode && state.pomodoroPhase == PomodoroPhase.FOCUS
-        prefs.edit { putBoolean("focus_mode", isFocusPhase || !state.isPomodoroMode) }
+        val isFocusPhase = (state.isPomodoroMode && state.pomodoroPhase == PomodoroPhase.FOCUS) ||
+                (state.isCountUpMode && state.pomodoroPhase == PomodoroPhase.FOCUS)
+        prefs.edit {
+            putBoolean(
+                "focus_mode",
+                isFocusPhase || (!state.isPomodoroMode && !state.isCountUpMode)
+            )
+        }
 
-        if (isFocusPhase || !state.isPomodoroMode) {
+        if (isFocusPhase || (!state.isPomodoroMode && !state.isCountUpMode)) {
             enableDNDIfNeeded()
         }
 
+        val timeToDisplay =
+            if (state.isCountUpMode && state.pomodoroPhase != PomodoroPhase.COUNT_UP_BREAK) {
+                state.focusTimeElapsed
+            } else {
+                state.timeRemaining
+            }
+
         updateNotification(
             title = getNotificationTitle(),
-            text = getString(R.string.time_remaining, formatTime(state.timeRemaining)),
+            text = if (state.isCountUpMode && state.pomodoroPhase != PomodoroPhase.COUNT_UP_BREAK) formatTime(
+                timeToDisplay
+            ) else getString(R.string.time_remaining, formatTime(timeToDisplay)),
             showPauseButton = !state.isStrictMode,
-            timeLeft = state.timeRemaining
+            timeLeft = timeToDisplay
         )
-        startCountdown(state.timeRemaining)
+
+        if (state.isCountUpMode) {
+            startCountUp()
+        } else {
+            startCountdown(state.timeRemaining)
+        }
     }
 
     private fun restartCurrentPhase() {
         countDownTimer?.cancel()
+        countUpJob?.cancel()
 
-        val currentPhaseType = when (TimerStateManager.state.value.pomodoroPhase) {
+        val state = TimerStateManager.state.value
+        val currentPhaseType = when (state.pomodoroPhase) {
             PomodoroPhase.SHORT_BREAK -> PhaseType.SHORT_BREAK
             PomodoroPhase.LONG_BREAK -> PhaseType.LONG_BREAK
             else -> PhaseType.FOCUS
@@ -249,24 +416,47 @@ class FocusModeService: Service() {
         FocusStats.endPhase(isCompleted = false)
         FocusStats.startPhase(currentPhaseType, initialDuration)
 
-        TimerStateManager.updateState {
-            copy(
-                timeRemaining = initialDuration,
-                isPaused = false,
-                isRunning = true
+        if (state.isCountUpMode && state.pomodoroPhase != PomodoroPhase.COUNT_UP_BREAK) {
+            TimerStateManager.updateState {
+                copy(
+                    focusTimeElapsed = 0,
+                    breakBudget = 0,
+                    timeRemaining = 0,
+                    isPaused = false,
+                    isRunning = true
+                )
+            }
+
+            prefs.edit { putBoolean("focus_mode", true) }
+
+            updateNotification(
+                title = getNotificationTitle(),
+                text = buildNotificationText(TimerStateManager.state.value, 0),
+                showPauseButton = !TimerStateManager.state.value.isStrictMode,
+                timeLeft = 0
             )
+            broadcastTimerUpdate(formatTime(0))
+            startCountUp()
+        } else {
+            TimerStateManager.updateState {
+                copy(
+                    timeRemaining = initialDuration,
+                    isPaused = false,
+                    isRunning = true
+                )
+            }
+
+            prefs.edit { putBoolean("focus_mode", true) }
+
+            updateNotification(
+                title = getNotificationTitle(),
+                text = buildNotificationText(TimerStateManager.state.value, initialDuration),
+                showPauseButton = !TimerStateManager.state.value.isStrictMode,
+                timeLeft = initialDuration
+            )
+            broadcastTimerUpdate(formatTime(initialDuration))
+            startCountdown(initialDuration)
         }
-
-        prefs.edit { putBoolean("focus_mode", true) }
-
-        updateNotification(
-            title = getNotificationTitle(),
-            text = getString(R.string.time_remaining, formatTime(initialDuration)),
-            showPauseButton = !TimerStateManager.state.value.isStrictMode,
-            timeLeft = initialDuration
-        )
-        broadcastTimerUpdate(formatTime(initialDuration))
-        startCountdown(initialDuration)
     }
 
     private fun updateNotificationAndBroadcast(millisUntilFinished: Long) {
@@ -275,7 +465,7 @@ class FocusModeService: Service() {
 
         updateNotification(
             title = getNotificationTitle(),
-            text = getString(R.string.time_remaining, formattedTime),
+            text = buildNotificationText(state, millisUntilFinished),
             showPauseButton = !state.isStrictMode && !state.isPaused,
             timeLeft = millisUntilFinished
         )
@@ -285,13 +475,18 @@ class FocusModeService: Service() {
     private fun handleTimerComplete() {
         val state = TimerStateManager.state.value
 
-        if (!state.isPomodoroMode) {
+        if (state.isCountUpMode) {
+            if (state.pomodoroPhase == PomodoroPhase.COUNT_UP_BREAK) {
+                resumeCountUpAfterBreak()
+            } else {
+                // For count up focus, user manually stops. 
+                // But if they reached some internal limit if we add one later.
+            }
+        } else if (!state.isPomodoroMode) {
             endSession()
         } else {
             transitionPomodoroPhase()
         }
-
-
     }
 
     private fun endSession() {
@@ -382,7 +577,7 @@ class FocusModeService: Service() {
         }
 
         val notificationText = if (shouldAutoStart) {
-            getString(R.string.time_remaining, formatTime(nextPhase.duration))
+            buildNotificationText(TimerStateManager.state.value, nextPhase.duration)
         } else {
             getString(R.string.tap_to_start_next_phase)
         }
@@ -586,6 +781,14 @@ class FocusModeService: Service() {
         }.build()
     }
 
+    private fun buildNotificationText(state: TimerSessionState, timeLeft: Long): String {
+        return if (state.isCountUpMode && state.pomodoroPhase != PomodoroPhase.COUNT_UP_BREAK) {
+            formatTime(state.focusTimeElapsed.coerceAtLeast(0L))
+        } else {
+            getString(R.string.time_remaining, formatTime(timeLeft))
+        }
+    }
+
     private fun updateNotification(
         title: String,
         text: String,
@@ -717,6 +920,8 @@ class FocusModeService: Service() {
     override fun onDestroy() {
         super.onDestroy()
         countDownTimer?.cancel()
+        countUpJob?.cancel()
+        serviceScope.cancel()
         notificationManager.cancel(NOTIFICATION_ID)
         restoreDND()
 
@@ -727,11 +932,4 @@ class FocusModeService: Service() {
         prefs.edit { putBoolean("focus_mode", false) }
         TimerStateManager.reset()
     }
-}
-
-fun formatTime(millis: Long): String {
-    val totalSeconds = millis / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
 }

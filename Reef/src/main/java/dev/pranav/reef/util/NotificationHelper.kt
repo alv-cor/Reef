@@ -7,7 +7,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.view.ContextThemeWrapper
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -73,8 +72,6 @@ object NotificationHelper {
     fun syncRoutineNotification(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val activeNames = RoutineSessionManager.getActiveRoutineNames()
-
-        val context = ContextThemeWrapper(context, R.style.Theme_Reef)
 
         if (activeNames.isEmpty()) {
             manager.cancel(ROUTINE_STATUS_NOTIFICATION_ID)

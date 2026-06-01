@@ -256,6 +256,17 @@
     <string name="no_pausing_allowed">No pausing allowed</string>
     <string name="pause_resume_anytime">Pause &amp; resume anytime</string>
     <string name="start">Start</string>
+    <string name="start_count_up">Start Count Up</string>
+    <string name="count_up_mode_label">Count Up Mode</string>
+    <string name="countdown_mode_label">Countdown Mode</string>
+    <string name="count_up_ratio_label">Focus-to-Break Ratio</string>
+    <string name="count_up_ratio_description">Earn 1m break for every %1$d min focus</string>
+    <string name="earned_break_budget">%1$s break earned</string>
+    <string name="redeem_break">Break</string>
+    <string name="take_break">Take Break</string>
+    <string name="bank_break">Bank &amp; Stop</string>
+    <string name="take_earned_break_message">You have earned %1$s of break time. Take it now?</string>
+    <string name="ratio_format">%1$d:1</string>
     <string name="focus_label">Focus</string>
     <string name="short_break_label">Short Break</string>
     <string name="long_break_label">Long Break</string>

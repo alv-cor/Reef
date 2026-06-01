@@ -346,7 +346,8 @@ class MainActivity: ComponentActivity() {
                                 onPauseTimer = { pauseFocusMode() },
                                 onResumeTimer = { resumeFocusMode() },
                                 onCancelTimer = { cancelFocusMode() },
-                                onRestartTimer = { restartFocusMode() }
+                                onRestartTimer = { restartFocusMode() },
+                                onTakeBreak = { takeBreak() }
                             )
                         }
 
@@ -530,6 +531,7 @@ class MainActivity: ComponentActivity() {
             is TimerConfig.Simple -> prefs.edit {
                 putBoolean("focus_mode", true)
                 putBoolean("pomodoro_mode", false)
+                remove("count_up_mode")
                 putLong("focus_time", config.minutes * 60 * 1000L)
                 putBoolean("strict_mode", config.strictMode)
             }
@@ -544,7 +546,16 @@ class MainActivity: ComponentActivity() {
                 putInt("pomodoro_cycles_before_long_break", config.cycles)
                 putInt("pomodoro_current_cycle", 1)
                 putString("pomodoro_state", "FOCUS")
+                remove("count_up_mode")
                 putBoolean("strict_mode", config.strictMode)
+            }
+
+            is TimerConfig.CountUp -> prefs.edit {
+                putBoolean("focus_mode", true)
+                putBoolean("pomodoro_mode", false)
+                putBoolean("count_up_mode", true)
+                putFloat("count_up_ratio", config.ratio.toFloat())
+                putBoolean("strict_mode", false)
             }
         }
         startForegroundService(Intent(this, FocusModeService::class.java).apply {
@@ -570,10 +581,17 @@ class MainActivity: ComponentActivity() {
         })
     }
 
+    private fun takeBreak() {
+        startService(Intent(this, FocusModeService::class.java).apply {
+            action = FocusModeService.ACTION_TAKE_BREAK
+        })
+    }
+
     private fun cancelFocusMode() {
         stopService(Intent(this, FocusModeService::class.java))
         prefs.edit {
             putBoolean("focus_mode", false)
+            remove("count_up_mode")
             remove("strict_mode")
         }
     }
@@ -599,6 +617,7 @@ class MainActivity: ComponentActivity() {
         if (!timerState.isRunning && !timerState.isPaused) {
             prefs.edit {
                 putBoolean("focus_mode", false)
+                remove("count_up_mode")
                 remove("strict_mode")
             }
         }

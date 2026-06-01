@@ -36,8 +36,8 @@
         android:persistent="true"
         android:supportsRtl="true"
         android:appCategory="productivity"
+        android:theme="@android:style/Theme.DeviceDefault.Wallpaper.NoTitleBar"
         android:enableOnBackInvokedCallback="true"
-        android:theme="@style/Theme.Reef"
         android:directBootAware="true"
         android:localeConfig="@xml/locales_config"
         tools:targetApi="33">
@@ -66,8 +66,7 @@
         <activity
             android:name=".MindfulLaunchActivity"
             android:excludeFromRecents="true"
-            android:exported="false"
-            android:theme="@style/Theme.Reef" />
+            android:exported="false" />
 
         <service
             android:name=".accessibility.BlockerService"
@@ -131,7 +130,6 @@
             android:name=".DebugActivity"
             android:exported="false"
             android:process=":error_recovery"
-            android:theme="@style/Theme.Reef"
             android:windowSoftInputMode="adjustResize" />
     </application>
 

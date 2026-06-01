@@ -411,7 +411,7 @@ class MindfulLaunchAppsViewModel(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MindfulLaunchAppsScreen(
     onBackPressed: () -> Unit

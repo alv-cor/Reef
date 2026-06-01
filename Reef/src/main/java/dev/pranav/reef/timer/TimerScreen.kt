@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Lock
@@ -22,10 +23,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -33,6 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import dev.pranav.reef.R
 import dev.pranav.reef.navigation.Screen
 import dev.pranav.reef.ui.Typography.DMSerif
+import dev.pranav.reef.util.AndroidUtilities.formatTime
 import dev.pranav.reef.util.prefs
 
 sealed interface TimerConfig {
@@ -44,6 +44,8 @@ sealed interface TimerConfig {
         val cycles: Int,
         val strictMode: Boolean
     ): TimerConfig
+
+    data class CountUp(val ratio: Int, val strictMode: Boolean): TimerConfig
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,7 +61,8 @@ fun TimerContent(
     onPauseTimer: () -> Unit,
     onResumeTimer: () -> Unit,
     onCancelTimer: () -> Unit,
-    onRestartTimer: () -> Unit
+    onRestartTimer: () -> Unit,
+    onTakeBreak: () -> Unit = {}
 ) {
     val showRunningView = isTimerRunning || isPaused
     var selectedMode by remember { mutableIntStateOf(0) }
@@ -105,7 +108,7 @@ fun TimerContent(
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
-            AnimatedContent(targetState = showRunningView) { running ->
+            AnimatedContent(targetState = showRunningView, label = "") { running ->
                 if (running) {
                     RunningTimerView(
                         timeLeft = currentTimeLeft,
@@ -115,7 +118,8 @@ fun TimerContent(
                         onPause = onPauseTimer,
                         onResume = onResumeTimer,
                         onCancel = onCancelTimer,
-                        onRestart = onRestartTimer
+                        onRestart = onRestartTimer,
+                        onTakeBreak = onTakeBreak
                     )
                 } else {
                     Column(
@@ -140,7 +144,6 @@ fun TimerContent(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun TimerScreen(
     isTimerRunning: Boolean,
@@ -153,26 +156,22 @@ fun TimerScreen(
     onResumeTimer: () -> Unit,
     onCancelTimer: () -> Unit,
     onRestartTimer: () -> Unit,
+    onTakeBreak: () -> Unit = {},
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        TimerContent(
-            navController = rememberNavController(),
-            isTimerRunning = isTimerRunning,
-            isPaused = isPaused,
-            currentTimeLeft = currentTimeLeft,
-            currentTimerState = currentTimerState,
-            isStrictMode = isStrictMode,
-            onStartTimer = onStartTimer,
-            onPauseTimer = onPauseTimer,
-            onResumeTimer = onResumeTimer,
-            onCancelTimer = onCancelTimer,
-            onRestartTimer = onRestartTimer
-        )
-    }
+    TimerContent(
+        navController = rememberNavController(),
+        isTimerRunning = isTimerRunning,
+        isPaused = isPaused,
+        currentTimeLeft = currentTimeLeft,
+        currentTimerState = currentTimerState,
+        isStrictMode = isStrictMode,
+        onStartTimer = onStartTimer,
+        onPauseTimer = onPauseTimer,
+        onResumeTimer = onResumeTimer,
+        onCancelTimer = onCancelTimer,
+        onRestartTimer = onRestartTimer,
+        onTakeBreak = onTakeBreak
+    )
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -216,204 +215,252 @@ fun FocusModeGroup(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SimpleFocusSetup(onStart: (TimerConfig) -> Unit) {
+    var isCountUp by remember { mutableStateOf(prefs.getBoolean("timer_is_count_up", false)) }
     var hours by remember { mutableIntStateOf(0) }
     var minutes by remember { mutableIntStateOf(30) }
+    var ratio by remember { mutableIntStateOf(prefs.getInt("timer_count_up_ratio", 5)) }
     var isStrictMode by remember { mutableStateOf(false) }
 
     val totalMinutes = hours * 60 + minutes
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(16.dp))
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            SegmentedButton(
+                selected = !isCountUp,
+                onClick = {
+                    isCountUp = false
+                    prefs.edit().putBoolean("timer_is_count_up", false).apply()
+                },
+                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
             ) {
-                FilledTonalIconButton(
-                    onClick = { if (hours < 12) hours++ },
-                    modifier = Modifier.size(64.dp),
-                    shapes = IconButtonDefaults.shapes(
-                        shape = IconButtonDefaults.extraLargeSquareShape,
-                        pressedShape = IconButtonDefaults.largePressedShape
-                    )
-                ) {
-                    Icon(Icons.Rounded.Add, stringResource(R.string.increase_hours))
-                }
-                Spacer(Modifier.width(120.dp))
-                FilledTonalIconButton(
-                    onClick = {
-                        if (minutes < 59) minutes++ else if (hours < 12) {
-                            hours++; minutes = 0
-                        }
-                    },
-                    modifier = Modifier.size(64.dp),
-                    shapes = IconButtonDefaults.shapes(
-                        shape = IconButtonDefaults.extraLargeSquareShape,
-                        pressedShape = IconButtonDefaults.largePressedShape
-                    )
-                ) {
-                    Icon(Icons.Rounded.Add, stringResource(R.string.increase_minutes))
-                }
+                Text(stringResource(R.string.countdown_mode_label))
             }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+            SegmentedButton(
+                selected = isCountUp,
+                onClick = {
+                    isCountUp = true
+                    isStrictMode = false
+                    prefs.edit().putBoolean("timer_is_count_up", true).apply()
+                },
+                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
             ) {
-                Text(
-                    text = hours.toString().padStart(2, '0'),
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = 92.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-                Text(
-                    text = ":",
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = 92.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-                Text(
-                    text = minutes.toString().padStart(2, '0'),
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = 92.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                FilledTonalIconButton(
-                    onClick = { if (hours > 0) hours-- },
-                    modifier = Modifier.size(64.dp),
-                    shapes = IconButtonDefaults.shapes(
-                        shape = IconButtonDefaults.extraLargeSquareShape,
-                        pressedShape = IconButtonDefaults.largePressedShape
-                    )
-                ) {
-                    Icon(Icons.Rounded.Remove, stringResource(R.string.decrease_hours))
-                }
-                Spacer(Modifier.width(120.dp))
-                FilledTonalIconButton(
-                    onClick = {
-                        if (minutes > 0) minutes-- else if (hours > 0) {
-                            hours--; minutes = 59
-                        }
-                    },
-                    modifier = Modifier.size(64.dp),
-                    shapes = IconButtonDefaults.shapes(
-                        shape = IconButtonDefaults.extraLargeSquareShape,
-                        pressedShape = IconButtonDefaults.largePressedShape
-                    )
-                ) {
-                    Icon(Icons.Rounded.Remove, stringResource(R.string.decrease_minutes))
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(0.8f),
-                horizontalArrangement = Arrangement.SpaceAround
-            ) {
-                Text(stringResource(R.string.hours), style = MaterialTheme.typography.titleMedium)
-                Text(stringResource(R.string.minutes), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.count_up_mode_label))
             }
         }
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(24.dp))
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        if (!isCountUp) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Icon(
-                    imageVector = if (isStrictMode) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-                Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilledTonalIconButton(
+                        onClick = { if (hours < 12) hours++ },
+                        modifier = Modifier.size(64.dp),
+                        shapes = IconButtonDefaults.shapes(IconButtonDefaults.extraLargeSquareShape)
+                    ) {
+                        Icon(Icons.Rounded.Add, stringResource(R.string.increase_hours))
+                    }
+                    Spacer(Modifier.width(120.dp))
+                    FilledTonalIconButton(
+                        onClick = {
+                            if (minutes < 59) minutes++ else if (hours < 12) {
+                                hours++; minutes = 0
+                            }
+                        },
+                        modifier = Modifier.size(64.dp),
+                        shapes = IconButtonDefaults.shapes(IconButtonDefaults.extraLargeSquareShape)
+                    ) {
+                        Icon(Icons.Rounded.Add, stringResource(R.string.increase_minutes))
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
                     Text(
-                        text = if (isStrictMode) stringResource(R.string.strict_mode) else stringResource(
-                            R.string.flexible_mode
-                        ),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        text = hours.toString().padStart(2, '0'),
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = 92.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     )
                     Text(
-                        text = if (isStrictMode) stringResource(R.string.no_pausing_allowed) else stringResource(
-                            R.string.pause_resume_anytime
+                        text = ":",
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = 92.sp,
+                            fontWeight = FontWeight.Bold
                         ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Text(
+                        text = minutes.toString().padStart(2, '0'),
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = 92.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     )
                 }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilledTonalIconButton(
+                        onClick = { if (hours > 0) hours-- },
+                        modifier = Modifier.size(64.dp),
+                        shapes = IconButtonDefaults.shapes(IconButtonDefaults.extraLargeSquareShape)
+                    ) {
+                        Icon(Icons.Rounded.Remove, stringResource(R.string.decrease_hours))
+                    }
+                    Spacer(Modifier.width(120.dp))
+                    FilledTonalIconButton(
+                        onClick = {
+                            if (minutes > 0) minutes-- else if (hours > 0) {
+                                hours--; minutes = 59
+                            }
+                        },
+                        modifier = Modifier.size(64.dp),
+                        shapes = IconButtonDefaults.shapes(IconButtonDefaults.extraLargeSquareShape)
+                    ) {
+                        Icon(Icons.Rounded.Remove, stringResource(R.string.decrease_minutes))
+                    }
+                }
             }
-            Switch(
-                checked = isStrictMode,
-                onCheckedChange = { isStrictMode = it }
-            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            ) {
+                AssistChip(
+                    onClick = { hours = 0; minutes = 5 },
+                    label = { Text(pluralStringResource(R.plurals.minutes_label, 5, 5)) })
+                AssistChip(
+                    onClick = { hours = 0; minutes = 15 },
+                    label = { Text(pluralStringResource(R.plurals.minutes_label, 15, 15)) })
+                AssistChip(
+                    onClick = { hours = 0; minutes = 30 },
+                    label = { Text(pluralStringResource(R.plurals.minutes_label, 30, 30)) })
+                AssistChip(
+                    onClick = { hours = 1; minutes = 0 },
+                    label = { Text(pluralStringResource(R.plurals.hours_label, 1, 1)) })
+                AssistChip(
+                    onClick = { hours = 2; minutes = 0 },
+                    label = { Text(pluralStringResource(R.plurals.hours_label, 2, 2)) })
+            }
+        } else {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = stringResource(R.string.count_up_ratio_label),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = stringResource(R.string.count_up_ratio_description, ratio),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(32.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    FilledTonalIconButton(onClick = {
+                        if (ratio > 1) {
+                            ratio--; prefs.edit().putInt("timer_count_up_ratio", ratio).apply()
+                        }
+                    }) {
+                        Icon(Icons.Rounded.Remove, stringResource(R.string.decrease))
+                    }
+                    Text(
+                        text = stringResource(R.string.ratio_format, ratio),
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = 72.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    )
+                    FilledTonalIconButton(onClick = {
+                        if (ratio < 10) {
+                            ratio++; prefs.edit().putInt("timer_count_up_ratio", ratio).apply()
+                        }
+                    }) {
+                        Icon(Icons.Rounded.Add, stringResource(R.string.increase))
+                    }
+                }
+            }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-        ) {
-            AssistChip(
-                onClick = { hours = 0; minutes = 5 },
-                label = { Text(pluralStringResource(R.plurals.minutes_label, 5, 5)) })
-            AssistChip(
-                onClick = { hours = 0; minutes = 15 },
-                label = { Text(pluralStringResource(R.plurals.minutes_label, 15, 15)) })
-            AssistChip(
-                onClick = { hours = 0; minutes = 30 },
-                label = { Text(pluralStringResource(R.plurals.minutes_label, 30, 30)) })
-            AssistChip(
-                onClick = { hours = 1; minutes = 0 },
-                label = { Text(pluralStringResource(R.plurals.hours_label, 1, 1)) })
-            AssistChip(
-                onClick = { hours = 2; minutes = 0 },
-                label = { Text(pluralStringResource(R.plurals.hours_label, 2, 2)) })
-            AssistChip(
-                onClick = { hours = 3; minutes = 0 },
-                label = { Text(pluralStringResource(R.plurals.hours_label, 3, 3)) })
-            AssistChip(
-                onClick = { hours = 1; minutes = 30 },
-                label = { Text(stringResource(R.string.hour_min_short_suffix, 1, 30, 30)) })
+        if (!isCountUp) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isStrictMode) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
+                        contentDescription = null
+                    )
+                    Column {
+                        Text(
+                            text = if (isStrictMode) stringResource(R.string.strict_mode) else stringResource(
+                                R.string.flexible_mode
+                            ),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (isStrictMode) stringResource(R.string.no_pausing_allowed) else stringResource(
+                                R.string.pause_resume_anytime
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Switch(checked = isStrictMode, onCheckedChange = { isStrictMode = it })
+            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = { onStart(TimerConfig.Simple(totalMinutes, isStrictMode)) },
+            onClick = {
+                if (isCountUp) onStart(
+                    TimerConfig.CountUp(
+                        ratio,
+                        isStrictMode
+                    )
+                ) else onStart(TimerConfig.Simple(totalMinutes, isStrictMode))
+            },
             modifier = Modifier.fillMaxWidth(),
-            enabled = totalMinutes > 0,
-            shapes = ButtonDefaults.shapes(pressedShape = ButtonDefaults.pressedShape),
+            enabled = isCountUp || totalMinutes > 0,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
@@ -426,92 +473,82 @@ fun SimpleFocusSetup(onStart: (TimerConfig) -> Unit) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = stringResource(R.string.start),
+                text = if (isCountUp) stringResource(R.string.start_count_up) else stringResource(R.string.start),
                 style = MaterialTheme.typography.titleLarge
             )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun PomodoroFocusSetup(onStart: (TimerConfig) -> Unit) {
-    var focusMinutes by remember {
-        mutableIntStateOf(prefs.getInt("pomodoro_focus_minutes", 25))
-    }
+    var focusMinutes by remember { mutableIntStateOf(prefs.getInt("pomodoro_focus_minutes", 25)) }
     var shortBreakMinutes by remember {
-        mutableIntStateOf(prefs.getInt("pomodoro_short_break_minutes", 5))
+        mutableIntStateOf(
+            prefs.getInt(
+                "pomodoro_short_break_minutes",
+                5
+            )
+        )
     }
     var longBreakMinutes by remember {
-        mutableIntStateOf(prefs.getInt("pomodoro_long_break_minutes", 15))
+        mutableIntStateOf(
+            prefs.getInt(
+                "pomodoro_long_break_minutes",
+                15
+            )
+        )
     }
-    var cycles by remember {
-        mutableIntStateOf(prefs.getInt("pomodoro_cycles", 4))
-    }
+    var cycles by remember { mutableIntStateOf(prefs.getInt("pomodoro_cycles", 4)) }
     var isStrictMode by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.height(16.dp))
-
-        Column(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                ExpressiveCounter(
-                    modifier = Modifier.weight(1f),
-                    label = stringResource(R.string.focus_label),
-                    value = focusMinutes,
-                    onValueChange = { focusMinutes = it },
-                    range = 1..120,
-                    suffix = stringResource(R.string.min_short_suffix)
-                )
-                ExpressiveCounter(
-                    modifier = Modifier.weight(1f),
-                    label = stringResource(R.string.short_break_label),
-                    value = shortBreakMinutes,
-                    onValueChange = { shortBreakMinutes = it },
-                    range = 1..30,
-                    suffix = stringResource(R.string.min_short_suffix)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                ExpressiveCounter(
-                    modifier = Modifier.weight(1f),
-                    label = stringResource(R.string.long_break_label),
-                    value = longBreakMinutes,
-                    onValueChange = { longBreakMinutes = it },
-                    range = 1..60,
-                    suffix = stringResource(R.string.min_short_suffix)
-                )
-                ExpressiveCounter(
-                    modifier = Modifier.weight(1f),
-                    label = stringResource(R.string.cycles_label),
-                    value = cycles,
-                    onValueChange = { cycles = it },
-                    range = 1..10,
-                    suffix = ""
-                )
-            }
+            ExpressiveCounter(
+                modifier = Modifier.weight(1f),
+                label = stringResource(R.string.focus_label),
+                value = focusMinutes,
+                onValueChange = { focusMinutes = it },
+                range = 1..120,
+                suffix = stringResource(R.string.min_short_suffix)
+            )
+            ExpressiveCounter(
+                modifier = Modifier.weight(1f),
+                label = stringResource(R.string.short_break_label),
+                value = shortBreakMinutes,
+                onValueChange = { shortBreakMinutes = it },
+                range = 1..30,
+                suffix = stringResource(R.string.min_short_suffix)
+            )
         }
-
+        Spacer(modifier = Modifier.height(24.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            ExpressiveCounter(
+                modifier = Modifier.weight(1f),
+                label = stringResource(R.string.long_break_label),
+                value = longBreakMinutes,
+                onValueChange = { longBreakMinutes = it },
+                range = 1..60,
+                suffix = stringResource(R.string.min_short_suffix)
+            )
+            ExpressiveCounter(
+                modifier = Modifier.weight(1f),
+                label = stringResource(R.string.cycles_label),
+                value = cycles,
+                onValueChange = { cycles = it },
+                range = 1..10,
+                suffix = ""
+            )
+        }
         Spacer(modifier = Modifier.height(32.dp))
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -525,8 +562,7 @@ fun PomodoroFocusSetup(onStart: (TimerConfig) -> Unit) {
             ) {
                 Icon(
                     imageVector = if (isStrictMode) Icons.Outlined.Lock else Icons.Rounded.LockOpen,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface
+                    contentDescription = null
                 )
                 Column {
                     Text(
@@ -545,33 +581,20 @@ fun PomodoroFocusSetup(onStart: (TimerConfig) -> Unit) {
                     )
                 }
             }
-            Switch(
-                checked = isStrictMode,
-                onCheckedChange = { isStrictMode = it }
-            )
+            Switch(checked = isStrictMode, onCheckedChange = { isStrictMode = it })
         }
-
         Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = {
-                onStart(
-                    TimerConfig.Pomodoro(
-                        focusMinutes,
-                        shortBreakMinutes,
-                        longBreakMinutes,
-                        cycles,
-                        isStrictMode
-                    )
+        Button(onClick = {
+            onStart(
+                TimerConfig.Pomodoro(
+                    focusMinutes,
+                    shortBreakMinutes,
+                    longBreakMinutes,
+                    cycles,
+                    isStrictMode
                 )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shapes = ButtonDefaults.shapes(pressedShape = ButtonDefaults.pressedShape),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
             )
-        ) {
+        }, modifier = Modifier.fillMaxWidth()) {
             Icon(
                 imageVector = Icons.TwoTone.PlayArrow,
                 contentDescription = null,
@@ -596,41 +619,27 @@ fun ExpressiveCounter(
     range: IntRange,
     suffix: String
 ) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Medium
         )
-
         Text(
             text = "$value$suffix",
             style = MaterialTheme.typography.displayLarge,
             fontWeight = FontWeight.Bold
         )
-
         Spacer(Modifier.height(8.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilledTonalIconButton(
                 onClick = { if (value > range.first) onValueChange(value - 1) },
-                modifier = Modifier.size(40.dp),
-                shapes = IconButtonDefaults.shapes()
-            ) {
-                Icon(Icons.Rounded.Remove, stringResource(R.string.decrease))
-            }
+                modifier = Modifier.size(40.dp)
+            ) { Icon(Icons.Rounded.Remove, stringResource(R.string.decrease)) }
             FilledTonalIconButton(
                 onClick = { if (value < range.last) onValueChange(value + 1) },
-                modifier = Modifier.size(40.dp),
-                shapes = IconButtonDefaults.shapes()
-            ) {
-                Icon(Icons.Rounded.Add, stringResource(R.string.increase))
-            }
+                modifier = Modifier.size(40.dp)
+            ) { Icon(Icons.Rounded.Add, stringResource(R.string.increase)) }
         }
     }
 }
@@ -645,160 +654,108 @@ fun RunningTimerView(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onCancel: () -> Unit,
-    onRestart: () -> Unit = {}
+    onRestart: () -> Unit = {},
+    onTakeBreak: () -> Unit = {}
 ) {
     val state by TimerStateManager.state.collectAsState()
-    val isPomodoroMode = state.isPomodoroMode
-    val currentCycle = state.currentCycle
-    val totalCycles = state.totalCycles
+    val isCountUpMode = state.isCountUpMode
+    val isBreak =
+        state.pomodoroPhase == PomodoroPhase.SHORT_BREAK || state.pomodoroPhase == PomodoroPhase.LONG_BREAK || state.pomodoroPhase == PomodoroPhase.COUNT_UP_BREAK
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 80.dp),
+                .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 80.dp)
         ) {
-            if (isPomodoroMode) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                ) {
-                    AssistChip(
-                        onClick = { },
-                        label = {
-                            Text(
-                                text = stringResource(R.string.pomodoro_tab),
-                                style = MaterialTheme.typography.labelMedium
+            if (state.isPomodoroMode) {
+                AssistChip(
+                    onClick = {},
+                    label = {
+                        Text(
+                            text = stringResource(
+                                if (timerState == "FOCUS") R.string.cycle_count else R.string.pomodoro_tab,
+                                state.currentCycle,
+                                state.totalCycles
                             )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Rounded.Timer,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    )
+                        )
+                    })
+            } else if (isCountUpMode) {
+                AssistChip(
+                    onClick = {},
+                    label = { Text(stringResource(R.string.count_up_mode_label)) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.TrendingUp,
+                            null,
+                            Modifier.size(16.dp)
+                        )
+                    })
+            }
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = when (timerState) {
+                    "SHORT_BREAK", "LONG_BREAK", "COUNT_UP_BREAK" -> stringResource(R.string.short_break_label)
+                    else -> stringResource(R.string.focus_label)
+                },
+                style = MaterialTheme.typography.displaySmall,
+                color = if (isBreak) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = if (isCountUpMode && !isBreak) formatTime(state.focusTimeElapsed) else timeLeft,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                fontFamily = DMSerif,
+                fontSize = 88.sp
+            )
 
-                    if (timerState == "FOCUS") {
-                        AssistChip(
-                            onClick = { },
-                            label = {
-                                Text(
-                                    text = stringResource(
-                                        R.string.cycle_count,
-                                        currentCycle,
-                                        totalCycles
-                                    ),
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                            }
+            if (isCountUpMode && !isBreak) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Rounded.Coffee, null, Modifier.size(18.dp))
+                        Text(
+                            text = stringResource(
+                                R.string.earned_break_budget,
+                                formatTime(state.breakBudget)
+                            ),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
-
-            val stateText = when (timerState) {
-                "FOCUS" -> stringResource(R.string.focus_label)
-                "SHORT_BREAK" -> stringResource(R.string.short_break_label)
-                "LONG_BREAK" -> stringResource(R.string.long_break_label)
-                else -> stringResource(R.string.focus_label)
-            }
-
-            val isBreak = timerState == "SHORT_BREAK" || timerState == "LONG_BREAK"
-
-            if (isBreak) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .padding(bottom = 8.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            Text(
-                text = stateText,
-                style = MaterialTheme.typography.displaySmall,
-                color = if (isBreak) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 8.dp),
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.SansSerif,
-            )
-
-            Text(
-                text = timeLeft,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                fontFamily = DMSerif,
-                fontSize = 88.sp,
-                color = if (isBreak) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface
-            )
-
-            if (isStrictMode) {
-                Text(
-                    text = stringResource(R.string.strict_mode),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.error,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-            } else if (isPaused) {
-                Text(
-                    text = stringResource(R.string.paused_status),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
-            } else if (isBreak) {
-                Text(
-                    text = stringResource(R.string.take_a_break_message),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .padding(top = 16.dp)
-                        .padding(horizontal = 32.dp)
-                )
-            }
-        }
-
-        val isBreak =
-            state.pomodoroPhase == PomodoroPhase.SHORT_BREAK || state.pomodoroPhase == PomodoroPhase.LONG_BREAK
-
-        if (!isStrictMode || (isPaused && isBreak)) {
-            RunningTimerActions(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = 16.dp, vertical = 24.dp)
-                    .fillMaxWidth(0.95f),
-                isPaused = isPaused,
-                onPause = onPause,
-                onResume = onResume,
-                onCancel = onCancel,
-                onRestart = onRestart,
-                isStrictMode = isStrictMode
-            )
-        } else {
-            Text(
-                text = stringResource(R.string.no_interruptions_message),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp)
+            if (isPaused) Text(
+                text = stringResource(R.string.paused_status),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.tertiary,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 16.dp)
             )
         }
+
+        RunningTimerActions(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 16.dp, vertical = 24.dp)
+                .fillMaxWidth(0.95f),
+            isPaused = isPaused,
+            isStrictMode = isStrictMode,
+            isCountUpMode = isCountUpMode,
+            canRedeemBreak = isCountUpMode && !isBreak && state.breakBudget > 0,
+            onPause = onPause,
+            onResume = onResume,
+            onCancel = onCancel,
+            onTakeBreak = onTakeBreak,
+            onRestart = onRestart
+        )
     }
 }
 
@@ -808,104 +765,58 @@ fun RunningTimerActions(
     modifier: Modifier = Modifier,
     isPaused: Boolean,
     isStrictMode: Boolean,
+    isCountUpMode: Boolean = false,
+    canRedeemBreak: Boolean = false,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onCancel: () -> Unit,
+    onTakeBreak: () -> Unit = {},
     onRestart: () -> Unit = {}
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         IconToggleButton(
             checked = isPaused,
             onCheckedChange = { if (isPaused) onResume() else onPause() },
-            shapes = IconButtonDefaults.toggleableShapes(
-                shape = if (isPaused) IconButtonDefaults.largeSquareShape else IconButtonDefaults.extraLargeSquareShape,
-            ),
-            colors = IconButtonDefaults.filledIconToggleButtonColors(
-                MaterialTheme.colorScheme.secondaryContainer,
-                checkedContainerColor = MaterialTheme.colorScheme.surfaceContainer
-            ),
             modifier = Modifier
-                .height(62.dp)
-                .aspectRatio(0.89f)
+                .height(64.dp)
+                .aspectRatio(1f)
         ) {
             Icon(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(9.dp),
                 imageVector = if (isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
-                contentDescription = if (isPaused) stringResource(R.string.resume) else stringResource(
-                    R.string.pause
-                )
+                contentDescription = null
             )
         }
-
-        if (!isStrictMode) {
-            Button(
-                onClick = { onCancel() },
+        if (canRedeemBreak) {
+            FilledTonalButton(
+                onClick = onTakeBreak,
                 modifier = Modifier
                     .weight(1f)
-                    .padding(12.dp)
-                    .height(84.dp),
-                shapes = ButtonDefaults.shapes(),
+                    .height(64.dp)
             ) {
                 Text(
-                    text = stringResource(R.string.cancel),
-                    style = MaterialTheme.typography.titleLargeEmphasized
-                )
-            }
-
-            OutlinedButton(
-                onClick = onRestart,
-                shapes = ButtonDefaults.shapes(shape = ButtonDefaults.elevatedShape),
-                modifier = Modifier.size(60.dp)
-            ) {
-                Icon(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    imageVector = Icons.Filled.Replay,
-                    contentDescription = stringResource(R.string.reset)
+                    text = stringResource(R.string.redeem_break),
+                    style = MaterialTheme.typography.titleMedium
                 )
             }
         }
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun TimerScreenPreview() {
-    MaterialTheme {
-        TimerScreen(
-            isTimerRunning = false,
-            isPaused = false,
-            currentTimeLeft = "25:00",
-            currentTimerState = "FOCUS",
-            isStrictMode = false,
-            onStartTimer = {},
-            onPauseTimer = {},
-            onResumeTimer = {},
-            onCancelTimer = {},
-            onRestartTimer = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun RunningTimerScreenPreview() {
-    MaterialTheme {
-        RunningTimerView(
-            timeLeft = "12:34",
-            timerState = "FOCUS",
-            isPaused = false,
-            isStrictMode = false,
-            onPause = {},
-            onResume = {},
-            onCancel = {},
-            onRestart = {}
-        )
+        if (!isStrictMode) {
+            Button(
+                onClick = onCancel, modifier = Modifier
+                    .weight(1f)
+                    .height(64.dp)
+            ) {
+                Text(
+                    text = stringResource(if (isCountUpMode) R.string.stop else R.string.cancel),
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
+            OutlinedIconButton(onClick = onRestart, modifier = Modifier.size(64.dp)) {
+                Icon(Icons.Filled.Replay, null)
+            }
+        }
     }
 }

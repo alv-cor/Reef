@@ -94,14 +94,6 @@ fun AboutScreen(
     }
 }
 
-@androidx.compose.ui.tooling.preview.Preview
-@Composable
-fun AboutScreenPreview() {
-    AboutScreen(
-        onBackPressed = {}
-    )
-}
-
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppInfoCard() {
