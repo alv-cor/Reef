@@ -1,4 +1,4 @@
-package dev.pranav.reef.ui.focusstats
+package dev.pranav.reef.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState

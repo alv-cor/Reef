@@ -6,7 +6,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.nsh07.pomodoro.ui.statsScreen
+package dev.pranav.reef.util
 
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -35,7 +35,6 @@ import com.patrykandpatrick.vico.compose.common.MarkerCornerBasedShape
 import com.patrykandpatrick.vico.compose.common.ProvideVicoTheme
 import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
 import com.patrykandpatrick.vico.compose.m3.common.rememberM3VicoTheme
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -103,7 +102,7 @@ internal fun TimeColumnChart(
                                 val endPadding = with(density) { 16.dp.toPx() }
                                 val bottomAxisHeight = with(density) { 32.dp.toPx() }
                                 val topPadding = with(density) { 8.dp.toPx() }
-                                
+
                                 val availableHeight = chartHeight - bottomAxisHeight - topPadding
 
                                 val columnWidth = with(density) { thickness.toPx() }
@@ -117,15 +116,17 @@ internal fun TimeColumnChart(
                                 val clickY = offset.y - topPadding
 
                                 // Ensure tap is within the horizontal bounds of the chart content
-                                if (offset.x in startAxisWidth..(chartWidth - endPadding) && 
-                                    clickY in 0f..availableHeight) {
-                                    
+                                if (offset.x in startAxisWidth..(chartWidth - endPadding) &&
+                                    clickY in 0f..availableHeight
+                                ) {
+
                                     // Using integer division for more predictable column mapping
                                     val columnIndex = (absoluteX / totalColumnWidth).toInt()
                                         .coerceIn(0, dataValues.size - 1)
 
                                     val maxValue = dataValues.maxOrNull() ?: 1f
-                                    val barHeightRatio = if (maxValue > 0) dataValues[columnIndex] / maxValue else 0f
+                                    val barHeightRatio =
+                                        if (maxValue > 0) dataValues[columnIndex] / maxValue else 0f
                                     val barHeight = availableHeight * barHeightRatio
                                     val barTop = availableHeight - barHeight
 
@@ -172,7 +173,7 @@ internal fun TimeLineChart(
                         LineCartesianLayer.rememberLine(
                             fill = LineCartesianLayer.LineFill.single(Fill(primaryColor)),
                             areaFill = LineCartesianLayer.AreaFill.single(Fill(areaBrush)),
-                            pointConnector = LineCartesianLayer.PointConnector.cubic(),
+                            interpolator = LineCartesianLayer.Interpolator.cubic(),
                         )
                     ),
                 ),

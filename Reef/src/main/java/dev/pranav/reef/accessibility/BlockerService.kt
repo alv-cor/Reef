@@ -17,6 +17,7 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import dev.pranav.reef.MindfulLaunchActivity
 import dev.pranav.reef.R
 import dev.pranav.reef.scheduleWatcher
 import dev.pranav.reef.services.routines.RoutineSessionManager
@@ -291,6 +292,17 @@ class BlockerService: AccessibilityService() {
             performGlobalAction(GLOBAL_ACTION_HOME)
             showFocusModeNotification(pkg)
             return
+        }
+
+        if (MindfulLaunchManager.isEnabled() && MindfulLaunchManager.isMindfulApp(pkg)) {
+            if (!MindfulLaunchManager.isCurrentlyUnlocked(pkg)) {
+                val intent = Intent(this, MindfulLaunchActivity::class.java).apply {
+                    putExtra("target_package", pkg)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                }
+                startActivity(intent)
+                return
+            }
         }
 
         val blockReason = UsageTracker.checkBlockReason(this, pkg)

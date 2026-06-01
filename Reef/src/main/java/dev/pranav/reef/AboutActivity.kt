@@ -4,8 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import dev.pranav.reef.screens.AboutScreen
 import dev.pranav.reef.ui.ReefTheme
-import dev.pranav.reef.ui.about.AboutScreen
 
 class AboutActivity: ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

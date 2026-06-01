@@ -29,7 +29,7 @@ import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProdu
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
 import com.patrykandpatrick.vico.compose.cartesian.data.columnSeries
 import dev.pranav.reef.R
-import org.nsh07.pomodoro.ui.statsScreen.TimeColumnChart
+import dev.pranav.reef.util.TimeColumnChart
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter

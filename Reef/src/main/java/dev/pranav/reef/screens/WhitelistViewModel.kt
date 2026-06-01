@@ -1,4 +1,4 @@
-package dev.pranav.reef.ui.whitelist
+package dev.pranav.reef.screens
 
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager

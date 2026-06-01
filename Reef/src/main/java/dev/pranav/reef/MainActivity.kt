@@ -51,9 +51,6 @@ import dev.pranav.reef.timer.TimerConfig
 import dev.pranav.reef.timer.TimerContent
 import dev.pranav.reef.timer.TimerStateManager
 import dev.pranav.reef.ui.ReefTheme
-import dev.pranav.reef.ui.blocklist.WebsiteBlocklistScreen
-import dev.pranav.reef.ui.focusstats.FocusSessionDetailScreen
-import dev.pranav.reef.ui.focusstats.FocusStatsScreen
 import dev.pranav.reef.util.*
 
 class MainActivity: ComponentActivity() {

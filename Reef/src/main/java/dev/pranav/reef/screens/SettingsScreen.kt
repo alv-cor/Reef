@@ -76,6 +76,15 @@ fun SettingsContent(
                 SettingsScreenRoute.Notifications -> NotificationSettingsContent(
                     onBackPressed = { currentScreen = SettingsScreenRoute.Main }
                 )
+
+                SettingsScreenRoute.MindfulLaunch -> MindfulLaunchSettingsContent(
+                    onBackPressed = { currentScreen = SettingsScreenRoute.Main },
+                    onNavigateToApps = { currentScreen = SettingsScreenRoute.MindfulLaunchApps }
+                )
+
+                SettingsScreenRoute.MindfulLaunchApps -> MindfulLaunchAppsScreen(
+                    onBackPressed = { currentScreen = SettingsScreenRoute.MindfulLaunch }
+                )
             }
         }
     }

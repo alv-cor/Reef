@@ -404,4 +404,20 @@
     <string name="nav_focus">Focus</string>
     <string name="nav_settings">Settings</string>
 
+    <!-- Mindful Launch Strings -->
+    <string name="mindful_launch">Mindful Launch</string>
+    <string name="mindful_launch_subtitle">Add countdown friction before opening apps</string>
+    <string name="mindful_launch_settings">Mindful Launch Settings</string>
+    <string name="enable_mindful_launch">Enable Mindful Launch</string>
+    <string name="mindful_launch_description">Adds friction before opening selected distracting apps and prompts for a time limit.</string>
+    <string name="mindful_launch_apps">Selected Apps</string>
+    <string name="mindful_launch_apps_description">Apps that require mindfulness countdown</string>
+    <string name="mindful_launch_duration">Countdown Duration</string>
+    <string name="mindful_launch_warning">Custom Warning Message</string>
+    <string name="mindful_launch_warning_hint">e.g., Take a deep breath. Do you really need to open this?</string>
+    <string name="mindful_launch_limit">Daily Launch Limit</string>
+    <string name="enable_launch_limit">Limit Daily Launches</string>
+    <string name="launch_limit_count">Daily Launch Limit Count</string>
+    <string name="launches_suffix">launches</string>
+
 </resources>

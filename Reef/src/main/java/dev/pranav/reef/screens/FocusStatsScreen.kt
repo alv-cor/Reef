@@ -1,4 +1,4 @@
-package dev.pranav.reef.ui.focusstats
+package dev.pranav.reef.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
@@ -30,7 +30,7 @@ import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
 import dev.pranav.reef.data.FocusSession
 import dev.pranav.reef.data.SessionType
 import dev.pranav.reef.util.FocusStats
-import org.nsh07.pomodoro.ui.statsScreen.TimeLineChart
+import dev.pranav.reef.util.TimeLineChart
 import java.time.*
 import java.time.format.DateTimeFormatter
 

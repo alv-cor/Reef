@@ -1,4 +1,4 @@
-package dev.pranav.reef.ui.about
+package dev.pranav.reef.screens
 
 import android.content.Intent
 import androidx.compose.foundation.background

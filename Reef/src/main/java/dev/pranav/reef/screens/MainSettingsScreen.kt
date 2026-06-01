@@ -13,10 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Language
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -27,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import dev.pranav.reef.AboutActivity
 import dev.pranav.reef.R
-import dev.pranav.reef.ui.about.DonateButton
 import dev.pranav.reef.util.append
 import dev.pranav.reef.util.prefs
 
@@ -50,16 +46,22 @@ fun MainSettingsContent(
             destination = SettingsScreenRoute.Pomodoro
         ),
         SettingsMenuItem(
-            icon = Icons.Rounded.Info,
-            title = stringResource(R.string.about),
-            subtitle = stringResource(R.string.about_subtitle),
-            destination = SettingsScreenRoute.Main
+            icon = Icons.Rounded.HourglassEmpty,
+            title = stringResource(R.string.mindful_launch),
+            subtitle = stringResource(R.string.mindful_launch_subtitle),
+            destination = SettingsScreenRoute.MindfulLaunch
         ),
         SettingsMenuItem(
             icon = Icons.Rounded.Notifications,
             title = stringResource(R.string.notifications),
             subtitle = stringResource(R.string.notifications_subtitle),
             destination = SettingsScreenRoute.Notifications
+        ),
+        SettingsMenuItem(
+            icon = Icons.Rounded.Info,
+            title = stringResource(R.string.about),
+            subtitle = stringResource(R.string.about_subtitle),
+            destination = SettingsScreenRoute.Main
         )
     )
 
@@ -153,10 +155,14 @@ fun MainSettingsContent(
                 onClick = {
                     when (item.destination) {
                         SettingsScreenRoute.Pomodoro -> onNavigate(SettingsScreenRoute.Pomodoro)
+                        SettingsScreenRoute.MindfulLaunch -> onNavigate(SettingsScreenRoute.MindfulLaunch)
                         SettingsScreenRoute.Notifications -> onNavigate(SettingsScreenRoute.Notifications)
                         SettingsScreenRoute.Main -> context.startActivity(
                             Intent(context, AboutActivity::class.java)
                         )
+
+                        else -> { /* No-op */
+                        }
                     }
                 }
             )

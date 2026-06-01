@@ -1,4 +1,4 @@
-package dev.pranav.reef.ui.whitelist
+package dev.pranav.reef.screens
 
 import android.graphics.Bitmap
 import android.graphics.Canvas

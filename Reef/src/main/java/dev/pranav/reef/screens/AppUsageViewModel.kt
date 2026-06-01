@@ -1,4 +1,4 @@
-package dev.pranav.reef.ui.appusage
+package dev.pranav.reef.screens
 
 import android.app.usage.UsageStatsManager
 import android.content.pm.ApplicationInfo

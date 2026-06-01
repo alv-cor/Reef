@@ -1,4 +1,4 @@
-package dev.pranav.reef.ui.blocklist
+package dev.pranav.reef.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*

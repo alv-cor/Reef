@@ -63,6 +63,12 @@
             android:name=".PermissionsCheckActivity"
             android:label="Permissions" />
 
+        <activity
+            android:name=".MindfulLaunchActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@style/Theme.Reef" />
+
         <service
             android:name=".accessibility.BlockerService"
             android:directBootAware="true"

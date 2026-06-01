@@ -1,4 +1,4 @@
-package dev.pranav.reef.ui.appusage
+package dev.pranav.reef.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
@@ -34,7 +34,7 @@ import androidx.core.graphics.drawable.toBitmap
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
 import dev.pranav.reef.R
-import org.nsh07.pomodoro.ui.statsScreen.TimeColumnChart
+import dev.pranav.reef.util.TimeColumnChart
 
 
 private fun formatTime(context: android.content.Context, timeInMillis: Long): String {
